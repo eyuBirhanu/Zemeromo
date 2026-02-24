@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-merriweather);
+
+  /* Brand Colors */
+  --color-primary: #10B981;
+  /* Emerald (Use for Success states / Depth) */
+  --color-primary-hover: #059669;
+
+  --color-accent: #D4F479;
+  /* LIME: The Main Brand Color */
+  --color-accent-hover: #c2e658;
+
+  --color-dark-bg: #0f131a;
+  /* Deep Charcoal */
+  --color-muted: #9CA3AF;
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom Utilities */
+@layer utilities {
+
+  /* 
+     UPDATED GRADIENT: 
+     Starts White -> Flows to Lime -> Ends in Emerald.
+     This emphasizes the Lime more than the previous version.
+  */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-accent to-primary;
+  }
+
+  /* A utility for that Lime Glow we used in the button */
+  .shadow-glow {
+    box-shadow: 0 0 40px -10px rgba(212, 244, 121, 0.3);
+  }
+
+  /* The Suno Texture */
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+    opacity: 0.15;
+    pointer-events: none;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+body {
+  background-color: var(--color-dark-bg);
+  color: #F3F4F6;
+  font-family: var(--font-sans);
+}
+
+/* 
+   NEW: Custom Text Selection 
+   This makes the site feel premium. When you select text, 
+   it highlights in Lime with Dark text.
+*/
+::selection {
+  background-color: var(--color-accent);
+  color: var(--color-dark-bg);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-accent) var(--color-dark-bg);
+}
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-dark-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom,
+      var(--color-accent-hover),
+      var(--color-primary-hover));
+  border-radius: 999px;
+  border: 2px solid var(--color-dark-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom,
+      var(--color-accent),
+      var(--color-primary));
+}
