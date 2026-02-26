@@ -11,18 +11,18 @@ import api from "@/lib/api";
 
 // UI Components
 import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select"; // Assuming this handles { value, label } options
+import Select from "@/components/ui/Select";
 import ImageUpload from "@/components/ui/ImageUpload";
 import TagInput from "@/components/ui/TagInput";
 import { useAuth } from "@/context/AuthContext";
 
-// --- 1. Validation Schema ---
+// --- 1. Validation Schema (FIXED: Removed .default() to satisfy TS) ---
 const albumSchema = z.object({
     title: z.string().min(2, "Title is required"),
     artistId: z.string().min(1, "Select an artist"),
     releaseYear: z.string().optional(),
-    genre: z.string().default("Worship"),
-    price: z.string().default("0"),
+    genre: z.string().min(1, "Genre is required"),
+    price: z.string().optional(),
     description: z.string().optional(),
     tags: z.array(z.string()).optional(),
 });
@@ -51,28 +51,31 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
     const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
     const [isLoadingData, setIsLoadingData] = useState(false);
 
-    // --- Form Hook ---
+    // --- Form Hook (FIXED: Added complete defaultValues) ---
     const {
         register,
         control,
         handleSubmit,
         setValue,
         reset,
-        watch,
         formState: { errors, isSubmitting }
     } = useForm<AlbumFormData>({
         resolver: zodResolver(albumSchema),
         defaultValues: {
-            tags: [],
+            title: "",
+            artistId: "",
+            genre: "Worship",
             price: "0",
-            genre: "Worship"
+            tags: [],
+            description: "",
+            releaseYear: ""
         }
     });
 
     // --- EFFECT 1: Load Churches (Only for Super Admin) ---
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get("/churches?status=verified") // Assuming you have a filter
+            api.get("/churches?status=verified")
                 .then(res => {
                     const options = res.data.data.map((c: any) => ({
                         value: c._id,
@@ -87,17 +90,15 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
     // --- EFFECT 2: Load Artists (Dependent on Church ID) ---
     useEffect(() => {
         const fetchArtists = async () => {
-            // Determine which Church ID to use
             const targetId = isSuperAdmin ? selectedChurchId : user?.churchId;
 
             if (!targetId) {
-                setArtists([]); // Clear list if no church selected
+                setArtists([]);
                 return;
             }
 
             setIsLoadingData(true);
             try {
-                // Fetch artists belonging to this church
                 const res = await api.get(`/artists?churchId=${targetId}`);
                 const options = res.data.data.map((a: any) => ({
                     value: a._id,
@@ -121,28 +122,24 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
             api.get(`/albums/${albumId}`).then(res => {
                 const data = res.data.data;
 
-                // 1. If Super Admin, set the church first so artists load
                 if (isSuperAdmin && data.churchId) {
                     setSelectedChurchId(data.churchId._id || data.churchId);
                 }
 
-                // 2. Pre-fill Form
                 reset({
                     title: data.title,
                     artistId: data.artistId?._id || data.artistId,
                     releaseYear: data.releaseYear,
-                    genre: data.genre,
-                    price: String(data.price),
+                    genre: data.genre || "Worship",
+                    price: data.price !== undefined ? String(data.price) : "0",
                     description: data.description,
                     tags: data.tags || []
                 });
 
-                // 3. Set Cover
                 setExistingCover(data.coverImageUrl);
             });
         }
     }, [albumId, isEditMode, isSuperAdmin, reset]);
-
 
     // --- Handlers ---
     const handleChurchChange = (churchId: string) => {
@@ -154,20 +151,17 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
         try {
             const formData = new FormData();
 
-            // Text Fields
             formData.append("title", data.title);
             formData.append("artistId", data.artistId);
             formData.append("genre", data.genre);
-            formData.append("price", data.price);
+            if (data.price) formData.append("price", data.price);
             if (data.releaseYear) formData.append("releaseYear", data.releaseYear);
             if (data.description) formData.append("description", data.description);
 
-            // Tags
             if (data.tags && data.tags.length > 0) {
                 data.tags.forEach(tag => formData.append("tags[]", tag));
             }
 
-            // CRITICAL: Super Admin Church Selection
             if (isSuperAdmin) {
                 if (!selectedChurchId) {
                     toast.error("Please select a church");
@@ -176,11 +170,9 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
                 formData.append('churchId', selectedChurchId);
             }
 
-            // Image File (Must be last usually)
             if (coverFile) {
                 formData.append("coverImage", coverFile);
             }
-
 
             const endpoint = isEditMode ? `/albums/${albumId}` : "/albums";
             const method = isEditMode ? api.put : api.post;
@@ -191,7 +183,7 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
 
             toast.success(isEditMode ? "Album Updated" : "Album Created Successfully");
             router.back();
-            router.refresh(); // Refresh server components if any
+            router.refresh();
 
         } catch (error: any) {
             console.error(error);
@@ -209,7 +201,6 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
 
     return (
         <div className="max-w-4xl mx-auto pb-20">
-            {/* Header */}
             <div className="mb-8">
                 <button onClick={() => router.back()} className="text-gray-400 hover:text-white flex items-center gap-2 mb-4 text-sm transition-colors">
                     <ArrowLeft size={16} /> Back
@@ -227,7 +218,6 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
             <form onSubmit={handleSubmit(onSubmit)} className="bg-[#1a1f2b] border border-white/5 rounded-2xl p-8 space-y-8 animate-in fade-in duration-500">
 
                 <div className="grid md:grid-cols-[250px_1fr] gap-8">
-                    {/* Left: Image Upload */}
                     <div>
                         <ImageUpload
                             label="Cover Art"
@@ -239,7 +229,6 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
                         </p>
                     </div>
 
-                    {/* Right: Input Fields */}
                     <div className="space-y-6">
 
                         {/* 1. CHURCH SELECTION (Super Admin Only) */}
@@ -249,7 +238,7 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
                                 <Select
                                     label=""
                                     options={churches}
-                                    value={selectedChurchId}
+                                    value={selectedChurchId || ""} // FIXED: Null is now prevented!
                                     onChange={handleChurchChange}
                                     placeholder="Search for a Church..."
                                 />
@@ -264,7 +253,6 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
                         />
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* 2. ARTIST SELECTION (Dependent on Church) */}
                             <Controller
                                 name="artistId"
                                 control={control}
@@ -276,7 +264,7 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
                                         onChange={field.onChange}
                                         placeholder={isLoadingData ? "Loading artists..." : "Select Artist..."}
                                         error={errors.artistId?.message}
-                                        disabled={artists.length === 0} // Disable if no church selected or no artists
+                                        disabled={artists.length === 0}
                                     />
                                 )}
                             />
@@ -311,7 +299,6 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
                     </div>
                 </div>
 
-                {/* Bottom Section: Description & Tags */}
                 <div className="space-y-6 pt-6 border-t border-white/5">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-400 ml-1">Description</label>

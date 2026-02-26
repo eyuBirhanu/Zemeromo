@@ -6,7 +6,7 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Music, Save, Loader2, ArrowLeft, Mic2, Disc, FileAudio, Users, Info } from "lucide-react";
+import { Music, Save, Loader2, ArrowLeft, Mic2, FileAudio, Users } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -16,19 +16,20 @@ import ImageUpload from "@/components/ui/ImageUpload";
 import TagInput from "@/components/ui/TagInput";
 import Toggle from "@/components/ui/Toggle";
 
+// --- 1. Validation Schema (FIXED: Removed .default() to prevent TS mismatch) ---
 const songSchema = z.object({
     title: z.string().min(2, "Title is required"),
     lyrics: z.string().min(10, "Lyrics are required"),
     artistId: z.string().min(1, "Artist is required"),
     albumId: z.string().min(1, "Album is required"),
-    genre: z.string().default("Worship"),
-    language: z.string().default("Amharic"),
+    genre: z.string().min(1, "Genre is required"),
+    language: z.string().min(1, "Language is required"),
     writer: z.string().optional(),
     composer: z.string().optional(),
-    isCover: z.boolean().default(false),
+    isCover: z.boolean(),
     originalCredits: z.string().optional(),
     tags: z.array(z.string()).optional(),
-    status: z.enum(["active", "archived"]).default("active"),
+    status: z.enum(["active", "archived"]),
 });
 
 type SongFormData = z.infer<typeof songSchema>;
@@ -52,7 +53,6 @@ const LANGUAGE_OPTIONS = [
 const GENRE_OPTIONS = [
     { value: "Worship", label: "Worship (Amleko)" },
     { value: "Praise", label: "Praise (Galata)" },
-    // { value: "Mezmur", label: "Mezmur (Orthodox/Trad)" },
     { value: "Hymn", label: "Hymn" },
     { value: "Choir", label: "Choir Song" },
     { value: "Wedding", label: "Wedding (Serg)" },
@@ -72,75 +72,103 @@ export default function SongForm({ songId }: SongFormProps) {
     const [existingAudioName, setExistingAudioName] = useState<string | null>(null);
 
     // Lists
-    const [churches, setChurches] = useState<any[]>([]);
-    const [artists, setArtists] = useState<any[]>([]);
-    const [albums, setAlbums] = useState<any[]>([]);
+    const [churches, setChurches] = useState<{ value: string; label: string }[]>([]);
+    const [artists, setArtists] = useState<{ value: string; label: string }[]>([]);
+    const [albums, setAlbums] = useState<{ value: string; label: string }[]>([]);
 
     // Selected States
     const [selectedChurch, setSelectedChurch] = useState<string>("");
     const [customLanguage, setCustomLanguage] = useState("");
 
-    const { register, control, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<SongFormData>({
+    // --- Form Hook (FIXED: Provided complete defaultValues) ---
+    const {
+        register,
+        control,
+        handleSubmit,
+        watch,
+        reset,
+        setValue,
+        formState: { errors, isSubmitting }
+    } = useForm<SongFormData>({
         resolver: zodResolver(songSchema),
-        defaultValues: { tags: [], isCover: false, status: "active", language: "Amharic", genre: "Worship" }
+        defaultValues: {
+            title: "",
+            lyrics: "",
+            artistId: "",
+            albumId: "",
+            writer: "",
+            composer: "",
+            tags: [],
+            isCover: false,
+            status: "active",
+            language: "Amharic",
+            genre: "Worship",
+            originalCredits: ""
+        }
     });
 
     const watchArtist = watch("artistId");
     const watchIsCover = watch("isCover");
     const watchLanguage = watch("language");
 
-    // --- 1. LOAD INITIAL DATA (One-Time Execution) ---
+    // --- 1. LOAD INITIAL DATA ---
     useEffect(() => {
         const init = async () => {
             try {
-                // A. Load Dropdown Options
                 if (user?.role === 'super_admin') {
                     const res = await api.get("/churches");
-                    setChurches(res.data.data);
+                    const options = res.data.data.map((c: any) => ({
+                        value: c._id,
+                        label: c.name
+                    }));
+                    setChurches(options);
                 }
                 else if (user?.role === 'church_admin') {
-                    // Pre-select church for admin
-                    setSelectedChurch(user.churchId);
-                    const res = await api.get(`/artists?churchId=${user.churchId}`);
-                    setArtists(res.data.data);
+                    // FIX: Safe access to user.churchId
+                    const userChurchId = user.churchId || "";
+                    setSelectedChurch(userChurchId);
+
+                    if (userChurchId) {
+                        const res = await api.get(`/artists?churchId=${userChurchId}`);
+                        const artistOptions = res.data.data.map((a: any) => ({
+                            value: a._id,
+                            label: a.name
+                        }));
+                        setArtists(artistOptions);
+                    }
                 }
 
-                // B. If EDIT MODE, fetch Song & Pre-fill
                 if (isEditMode) {
                     const res = await api.get(`/songs/${songId}`);
                     const song = res.data.data;
 
-                    // Super Admin: Fetch artists for THIS church
                     if (user?.role === 'super_admin') {
-                        const churchId = song.churchId._id || song.churchId;
+                        const churchId = song.churchId?._id || song.churchId;
                         setSelectedChurch(churchId);
                         const artistRes = await api.get(`/artists?churchId=${churchId}`);
-                        setArtists(artistRes.data.data);
+                        setArtists(artistRes.data.data.map((a: any) => ({ value: a._id, label: a.name })));
                     }
 
-                    // Fetch albums for THIS artist
-                    const artistId = song.artistId._id || song.artistId;
+                    const artistId = song.artistId?._id || song.artistId;
                     const albumRes = await api.get(`/albums?artistId=${artistId}`);
-                    setAlbums(albumRes.data.data);
+                    setAlbums(albumRes.data.data.map((a: any) => ({ value: a._id, label: a.title })));
 
-                    // Set Form Values
                     reset({
                         title: song.title,
                         lyrics: song.lyrics,
                         artistId: artistId,
-                        albumId: song.albumId._id || song.albumId,
+                        albumId: song.albumId?._id || song.albumId,
                         genre: song.genre,
                         language: song.language,
-                        writer: song.credits?.writer,
-                        composer: song.credits?.composer,
+                        writer: song.credits?.writer || "",
+                        composer: song.credits?.composer || "",
                         isCover: song.isCover,
-                        originalCredits: song.originalCredits,
+                        originalCredits: song.originalCredits || "",
                         tags: song.tags || [],
                         status: song.status
                     });
 
                     setExistingThumbnail(song.thumbnailUrl);
-                    // Just show "Existing" or parse filename if available
                     setExistingAudioName("Current Audio File");
                 }
 
@@ -150,39 +178,31 @@ export default function SongForm({ songId }: SongFormProps) {
             }
         };
         init();
-    }, [user, isEditMode, songId, reset]); // Dependencies are stable
+    }, [user, isEditMode, songId, reset]);
 
 
-    // --- 2. HANDLERS (Manual Cascading) ---
-    // These replace the buggy useEffects
-
+    // --- 2. HANDLERS ---
     const handleChurchChange = async (churchId: string) => {
         setSelectedChurch(churchId);
-
-        // Reset children
         setValue("artistId", "");
         setValue("albumId", "");
         setArtists([]);
         setAlbums([]);
 
-        // Fetch Artists
         if (churchId) {
             const res = await api.get(`/artists?churchId=${churchId}`);
-            setArtists(res.data.data);
+            setArtists(res.data.data.map((a: any) => ({ value: a._id, label: a.name })));
         }
     };
 
     const handleArtistChange = async (artistId: string) => {
         setValue("artistId", artistId);
-
-        // Reset child
         setValue("albumId", "");
         setAlbums([]);
 
-        // Fetch Albums
         if (artistId) {
             const res = await api.get(`/albums?artistId=${artistId}`);
-            setAlbums(res.data.data);
+            setAlbums(res.data.data.map((a: any) => ({ value: a._id, label: a.title })));
         }
     };
 
@@ -204,7 +224,6 @@ export default function SongForm({ songId }: SongFormProps) {
             formData.append("artistId", data.artistId);
             formData.append("albumId", data.albumId);
 
-            // Handle Church ID
             if (selectedChurch) formData.append("churchId", selectedChurch);
 
             if (data.writer) formData.append("writer", data.writer);
@@ -229,14 +248,12 @@ export default function SongForm({ songId }: SongFormProps) {
 
         } catch (error: any) {
             console.error(error);
-            // This will show the REAL error from backend now
             toast.error(error.response?.data?.message || "Operation Failed");
         }
     };
 
     return (
         <div className="max-w-5xl mx-auto pb-32">
-            {/* Header ... same ... */}
             <div className="mb-8">
                 <button onClick={() => router.back()} className="text-gray-400 hover:text-white flex items-center gap-2 mb-4 text-sm transition-colors">
                     <ArrowLeft size={16} /> Back to Library
@@ -256,7 +273,6 @@ export default function SongForm({ songId }: SongFormProps) {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                {/* Super Admin Church Select */}
                 {user?.role === 'super_admin' && (
                     <div className="bg-[#1a1f2b] border border-white/10 p-6 rounded-2xl">
                         <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -264,31 +280,29 @@ export default function SongForm({ songId }: SongFormProps) {
                         </h3>
                         <Select
                             label="Select Church"
-                            options={churches.map(c => ({ value: c._id, label: c.name }))}
+                            options={churches} // Fixed: Already mapped above
                             value={selectedChurch}
-                            onChange={handleChurchChange} // FIX: Use Manual Handler
+                            onChange={handleChurchChange}
                             placeholder="Choose owner..."
                         />
                     </div>
                 )}
 
-                {/* Info Section */}
                 <section className="bg-[#1a1f2b] border border-white/10 p-6 md:p-8 rounded-2xl space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
                             <Input label="Song Title" {...register("title")} error={errors.title?.message} />
                         </div>
 
-                        {/* Artists Dropdown (Controlled) */}
                         <Controller
                             name="artistId"
                             control={control}
                             render={({ field }) => (
                                 <Select
                                     label="Artist / Choir"
-                                    options={artists.map(a => ({ value: a._id, label: a.name }))}
+                                    options={artists} // Fixed: Already mapped above
                                     value={field.value}
-                                    onChange={(val) => handleArtistChange(val)} // FIX: Use Manual Handler
+                                    onChange={(val) => handleArtistChange(val)}
                                     error={errors.artistId?.message}
                                     placeholder={selectedChurch ? "Select Singer..." : "Select Church First"}
                                     disabled={!selectedChurch}
@@ -296,24 +310,22 @@ export default function SongForm({ songId }: SongFormProps) {
                             )}
                         />
 
-                        {/* Albums Dropdown (Controlled) */}
                         <Controller
                             name="albumId"
                             control={control}
                             render={({ field }) => (
                                 <Select
                                     label="Album"
-                                    options={albums.map(a => ({ value: a._id, label: a.title }))}
+                                    options={albums} // Fixed: Already mapped above
                                     value={field.value}
                                     onChange={field.onChange}
                                     error={errors.albumId?.message}
-                                    disabled={!watchArtist} // Disable if no artist
+                                    disabled={!watchArtist}
                                     placeholder={watchArtist ? "Select Album..." : "Select Artist First"}
                                 />
                             )}
                         />
 
-                        {/* Language & Genre ... same ... */}
                         <div className="grid md:grid-cols-2 gap-6">
                             <Controller
                                 name="genre"
@@ -335,7 +347,6 @@ export default function SongForm({ songId }: SongFormProps) {
                                         />
                                     )}
                                 />
-                                {/* Custom Language Input */}
                                 {watchLanguage === "Other" && (
                                     <Input
                                         label="Specify"
@@ -348,7 +359,6 @@ export default function SongForm({ songId }: SongFormProps) {
                     </div>
                 </section>
 
-                {/* Media Section */}
                 <section className="bg-[#1a1f2b] border border-white/10 p-6 md:p-8 rounded-2xl space-y-6">
                     <div className="grid md:grid-cols-2 gap-8">
                         <div className="space-y-6">
@@ -398,18 +408,15 @@ export default function SongForm({ songId }: SongFormProps) {
                     </div>
                 </section>
 
-                {/* Credits & Submit ... same ... */}
                 <section className="bg-[#1a1f2b] border border-white/10 p-6 md:p-8 rounded-2xl space-y-6">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
                         <Users size={20} className="text-accent" /> Credits & Metadata
                     </h3>
 
                     <div className="grid md:grid-cols-2 gap-6">
-                        {/* Credits */}
                         <Input label="Writer / Lyrist" {...register("writer")} placeholder="Optional" />
                         <Input label="Composer / Melody" {...register("composer")} placeholder="Optional" />
 
-                        {/* Tags */}
                         <div className="md:col-span-2">
                             <Controller
                                 name="tags"
@@ -417,7 +424,7 @@ export default function SongForm({ songId }: SongFormProps) {
                                 render={({ field }) => (
                                     <TagInput
                                         label="Search Tags"
-                                        placeholder="Type tag and press Enter (e.g. Easter, Fast, New Year)"
+                                        placeholder="Type tag and press Enter..."
                                         value={field.value || []}
                                         onChange={field.onChange}
                                     />
@@ -426,7 +433,6 @@ export default function SongForm({ songId }: SongFormProps) {
                         </div>
                     </div>
 
-                    {/* Cover Song Logic */}
                     <div className="mt-4 pt-4 border-t border-white/5">
                         <div className="flex items-center gap-4 mb-4">
                             <Controller

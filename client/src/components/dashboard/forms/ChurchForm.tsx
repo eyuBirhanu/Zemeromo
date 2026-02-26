@@ -18,7 +18,7 @@ import LocationPicker from "@/components/ui/LocationPicker";
 const churchSchema = z.object({
     name: z.string().min(3, "Church name is required"),
     denomination: z.string().min(1, "Select a denomination"),
-    city: z.string().default("Hossana"),
+    city: z.string().min(1, "City is required"),
     subCity: z.string().min(2, "Sub-city/Sefer is required"),
     phone: z.string().min(10, "Valid phone number required"),
     description: z.string().optional(),
@@ -51,8 +51,14 @@ export default function ChurchForm({ churchId }: ChurchFormProps) {
     } = useForm<ChurchFormData>({
         resolver: zodResolver(churchSchema),
         defaultValues: {
+            name: "",
             city: "Hossana",
-            denomination: "Mekane Yesus"
+            subCity: "",
+            phone: "",
+            denomination: "Mekane Yesus",
+            description: "",
+            lat: 9.0, // Default lat
+            lng: 38.7 // Default lng
         }
     });
 
