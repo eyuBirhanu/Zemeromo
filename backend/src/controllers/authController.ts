@@ -301,28 +301,24 @@ export const loginUser = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: "Server Error", error });
     }
 };
-
 /**
  * @desc    Forgot Password - Generates token & sends email
- * @route   POST /api/auth/forgot-password
  */
 export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const user = await User.findOne({ email: req.body.email });
         if (!user) {
-            // We return 200 even if user doesn't exist for security (prevents email enumeration)
             return res.status(200).json({ success: true, message: "If an account exists, an email was sent." });
         }
 
-        // 1. Generate Token
         const resetToken = crypto.randomBytes(20).toString("hex");
 
-        // 2. Hash token and set to database (Expires in 15 mins)
         user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
         user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000);
+
         await user.save({ validateBeforeSave: false });
 
-        // 3. Create reset URL (Frontend URL)
+        // 3. Create reset URL
         const frontendUrl = process.env.FRONTEND_URL || "https://zemeromo.et";
         const resetUrl = `${frontendUrl}/auth/reset-password/${resetToken}`;
 
@@ -338,26 +334,28 @@ export const forgotPassword = async (req: Request, res: Response) => {
             await sendEmail({ email: user.email!, subject: "Zemeromo - Password Reset", message });
             res.status(200).json({ success: true, message: "Email sent" });
         } catch (error) {
+            // FIX: undefined is now assignable because interface uses '?'
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
             await user.save({ validateBeforeSave: false });
             return res.status(500).json({ success: false, message: "Email could not be sent" });
         }
     } catch (error) {
+        console.error(error);
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 
 /**
  * @desc    Reset Password
- * @route   PUT /api/auth/reset-password/:token
  */
 export const resetPassword = async (req: Request, res: Response) => {
     try {
-        // 1. Get hashed token
-        const resetPasswordToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+        const token = req.params.token as string;
 
-        // 2. Find user by token AND check if token is not expired
+        // 1. Get hashed token
+        const resetPasswordToken = crypto.createHash("sha256").update(token).digest("hex");
+
         const user = await User.findOne({
             resetPasswordToken,
             resetPasswordExpire: { $gt: Date.now() }
@@ -366,13 +364,17 @@ export const resetPassword = async (req: Request, res: Response) => {
         if (!user) return res.status(400).json({ success: false, message: "Invalid or expired token" });
 
         // 3. Set new password
-        user.passwordHash = req.body.password; // Pre-save hook will hash this!
+        user.passwordHash = req.body.password;
+
+        // FIX: Assigning undefined is now allowed
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
+
         await user.save();
 
         res.status(200).json({ success: true, message: "Password updated successfully" });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };

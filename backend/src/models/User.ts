@@ -23,8 +23,8 @@ export interface IUser extends Document {
     isActive: boolean;
     verificationStatus: "pending" | "verified" | "rejected";
     lastLogin: Date;
-    resetPasswordToken: String;
-    resetPasswordExpire: String;
+    resetPasswordToken?: String;
+    resetPasswordExpire?: Date;
     avatarUrl?: string;
     comparePassword(password: string): Promise<boolean>;
 }
@@ -56,7 +56,7 @@ const UserSchema = new Schema<IUser>({
     },
     lastLogin: { type: Date },
     resetPasswordToken: { type: String, select: false },
-    resetPasswordExpire: { type: String, select: false },
+    resetPasswordExpire: { type: Date, select: false },
     avatarUrl: { type: String }
 }, { timestamps: true });
 
