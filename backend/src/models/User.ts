@@ -23,6 +23,8 @@ export interface IUser extends Document {
     isActive: boolean;
     verificationStatus: "pending" | "verified" | "rejected";
     lastLogin: Date;
+    resetPasswordToken: String;
+    resetPasswordExpire: String;
     avatarUrl?: string;
     comparePassword(password: string): Promise<boolean>;
 }
@@ -53,6 +55,8 @@ const UserSchema = new Schema<IUser>({
         default: "pending" // Normal users are verified by default. Church Admins will be 'pending'.
     },
     lastLogin: { type: Date },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpire: { type: String, select: false },
     avatarUrl: { type: String }
 }, { timestamps: true });
 

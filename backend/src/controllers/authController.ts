@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import User, { IUser } from "../models/User";
+import crypto from "crypto";
+import sendEmail from "../utils/sendEmail";
 import Church, { IChurch } from "../models/Church";
 
 const generateToken = (user: any) => {
@@ -297,5 +299,80 @@ export const loginUser = async (req: Request, res: Response) => {
     } catch (error) {
         console.error("Login Error:", error);
         res.status(500).json({ success: false, message: "Server Error", error });
+    }
+};
+
+/**
+ * @desc    Forgot Password - Generates token & sends email
+ * @route   POST /api/auth/forgot-password
+ */
+export const forgotPassword = async (req: Request, res: Response) => {
+    try {
+        const user = await User.findOne({ email: req.body.email });
+        if (!user) {
+            // We return 200 even if user doesn't exist for security (prevents email enumeration)
+            return res.status(200).json({ success: true, message: "If an account exists, an email was sent." });
+        }
+
+        // 1. Generate Token
+        const resetToken = crypto.randomBytes(20).toString("hex");
+
+        // 2. Hash token and set to database (Expires in 15 mins)
+        user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+        user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save({ validateBeforeSave: false });
+
+        // 3. Create reset URL (Frontend URL)
+        const frontendUrl = process.env.FRONTEND_URL || "https://zemeromo.et";
+        const resetUrl = `${frontendUrl}/auth/reset-password/${resetToken}`;
+
+        const message = `
+            <h2>Zemeromo Password Reset</h2>
+            <p>You requested a password reset. Please click the link below to set a new password:</p>
+            <a href="${resetUrl}" style="background:#1E3A8A; color:white; padding:10px 20px; text-decoration:none; border-radius:5px; display:inline-block;">Reset Password</a>
+            <p>If you did not request this, please ignore this email.</p>
+        `;
+
+        // 4. Send Email
+        try {
+            await sendEmail({ email: user.email!, subject: "Zemeromo - Password Reset", message });
+            res.status(200).json({ success: true, message: "Email sent" });
+        } catch (error) {
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpire = undefined;
+            await user.save({ validateBeforeSave: false });
+            return res.status(500).json({ success: false, message: "Email could not be sent" });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+/**
+ * @desc    Reset Password
+ * @route   PUT /api/auth/reset-password/:token
+ */
+export const resetPassword = async (req: Request, res: Response) => {
+    try {
+        // 1. Get hashed token
+        const resetPasswordToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+
+        // 2. Find user by token AND check if token is not expired
+        const user = await User.findOne({
+            resetPasswordToken,
+            resetPasswordExpire: { $gt: Date.now() }
+        });
+
+        if (!user) return res.status(400).json({ success: false, message: "Invalid or expired token" });
+
+        // 3. Set new password
+        user.passwordHash = req.body.password; // Pre-save hook will hash this!
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        res.status(200).json({ success: true, message: "Password updated successfully" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 };

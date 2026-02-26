@@ -12,6 +12,7 @@
     "@hookform/resolvers": "^5.2.2",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.34.3",
     "js-cookie": "^3.0.5",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",

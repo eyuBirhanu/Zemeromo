@@ -59,7 +59,7 @@ export default function Hero() {
                     <button className="group relative px-8 py-4 bg-accent hover:bg-[#c2e658] text-dark-bg rounded-full font-bold text-lg transition-all transform shadow-[0_0_30px_-10px_rgba(212,244,121,0.2)]">
                         <span className="flex items-center gap-2">
                             <Smartphone size={24} />
-                            Get Zema App
+                            Get Zemeromo App
                         </span>
                     </button>
 
