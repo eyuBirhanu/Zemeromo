@@ -1,6 +1,6 @@
 "use client"; // Needs to be client component for animations
 
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
@@ -9,9 +9,16 @@ import CTA from "@/components/landing/CTA";
 import Footer from "@/components/layout/Footer";
 
 // Animation variant for fading in sections as you scroll
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 50 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.8,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
 };
 
 export default function Home() {
@@ -39,3 +46,4 @@ export default function Home() {
     </main>
   );
 }
+
