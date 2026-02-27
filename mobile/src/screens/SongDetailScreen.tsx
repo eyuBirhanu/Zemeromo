@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
-    View, Text, Image, TouchableOpacity, StyleSheet, ScrollView,
-    StatusBar, ActivityIndicator, Platform, Dimensions
+    View, Text, TouchableOpacity, StyleSheet, ScrollView,
+    StatusBar, ActivityIndicator, Platform
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import api from '../lib/api';
 import { COLORS, SPACING, FONTS } from '../constants/theme';
 import { Song } from '../types/api';
 import { usePlayerStore } from '../store/playerStore';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemeColors } from '../hooks/useThemeColors'; // Theme Hook
 
 // --- FETCHER ---
 const fetchSongDetails = async (id: string): Promise<Song> => {
@@ -23,15 +24,12 @@ const fetchSongDetails = async (id: string): Promise<Song> => {
 // --- SETTINGS HOOK ---
 const useReaderSettings = () => {
     const [fontSize, setFontSize] = useState(18);
-    const [theme, setTheme] = useState<'dark' | 'light'>('dark');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         (async () => {
             const storedSize = await AsyncStorage.getItem('reader_fontSize');
-            const storedTheme = await AsyncStorage.getItem('reader_theme');
             if (storedSize) setFontSize(parseInt(storedSize, 10));
-            if (storedTheme) setTheme(storedTheme as 'dark' | 'light');
             setLoading(false);
         })();
     }, []);
@@ -42,12 +40,7 @@ const useReaderSettings = () => {
         AsyncStorage.setItem('reader_fontSize', size.toString());
     };
 
-    const toggleTheme = (newTheme: 'dark' | 'light') => {
-        setTheme(newTheme);
-        AsyncStorage.setItem('reader_theme', newTheme);
-    };
-
-    return { fontSize, updateFontSize, theme, toggleTheme, loading };
+    return { fontSize, updateFontSize, loading };
 };
 
 export default function SongDetailScreen() {
@@ -56,10 +49,10 @@ export default function SongDetailScreen() {
     const { id } = route.params || {};
     const { playSong } = usePlayerStore();
     const insets = useSafeAreaInsets();
-    const TAB_HEIGHT = 60 + insets.bottom;
+    const colors = useThemeColors(); // Get Global Theme
 
     // Settings State
-    const { fontSize, updateFontSize, theme, toggleTheme, loading: settingsLoading } = useReaderSettings();
+    const { fontSize, updateFontSize, loading: settingsLoading } = useReaderSettings();
     const [showSettings, setShowSettings] = useState(false);
 
     // Data Fetch
@@ -68,95 +61,69 @@ export default function SongDetailScreen() {
         queryFn: () => fetchSongDetails(id),
     });
 
-    // --- COLOR LOGIC (Local to Lyric Area) ---
-    // We keep the main container DARK to match the app, 
-    // but change the scrollview background if 'Light' is selected.
-    const isLight = theme === 'light';
-    const bgColor = isLight ? '#FDFBF7' : COLORS.dark.bg; // Soft Cream vs Dark
-    const textColor = isLight ? '#1F2937' : 'rgba(255,255,255,0.9)';
-    const settingsBg = COLORS.dark.surface; // Always dark for contrast against the app header
+    // --- CHECK AUDIO AVAILABILITY ---
+    // Ensure audioUrl exists and is not an empty string
+    const hasAudio = song?.audioUrl && song.audioUrl.trim().length > 0;
 
     if (isLoading || settingsLoading) {
         return (
-            <View style={[styles.center, { backgroundColor: COLORS.dark.bg }]}>
-                <ActivityIndicator size="large" color={COLORS.accent} />
+            <View style={[styles.center, { backgroundColor: colors.bg }]}>
+                <ActivityIndicator size="large" color={colors.accent} />
             </View>
         );
     }
 
     if (isError || !song) {
         return (
-            <View style={styles.center}>
-                <Text style={{ color: COLORS.dark.textSecondary }}>Song not found.</Text>
+            <View style={[styles.center, { backgroundColor: colors.bg }]}>
+                <Text style={{ color: colors.textSecondary }}>Song not found.</Text>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text style={{ color: COLORS.accent, marginTop: 10 }}>Go Back</Text>
+                    <Text style={{ color: colors.primary, marginTop: 10 }}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={COLORS.dark.bg} />
+        <View style={[styles.container, { backgroundColor: colors.bg }]}>
+            <StatusBar barStyle={colors.isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
 
-            {/* --- COMPACT HEADER (Always Dark) --- */}
-            {/* This keeps the app feeling consistent */}
-            <View style={styles.header}>
+            {/* --- COMPACT HEADER --- */}
+            <View style={[styles.header, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-                    <Ionicons name="chevron-back" size={24} color="white" />
+                    <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
 
-                {/* Mini Song Info in Header */}
                 <View style={styles.headerTitleContainer}>
-                    <Text style={styles.headerTitle} numberOfLines={1}>{song.title}</Text>
-                    <Text style={styles.headerSubtitle} numberOfLines={1}>{song.artistId?.name || "Unknown"}</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{song.title}</Text>
+                    <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>{song.artistId?.name || "Unknown"}</Text>
                 </View>
 
                 {/* Settings Toggle */}
                 <TouchableOpacity
                     onPress={() => setShowSettings(!showSettings)}
-                    style={[styles.iconBtn, showSettings && { backgroundColor: COLORS.accent }]}
+                    style={[styles.iconBtn, showSettings && { backgroundColor: colors.surface }]}
                 >
                     <Ionicons
                         name="text"
                         size={22}
-                        color={showSettings ? COLORS.black : "white"}
+                        color={showSettings ? colors.accent : colors.text}
                     />
                 </TouchableOpacity>
             </View>
 
-            {/* --- SETTINGS DROPDOWN (No Blur, Absolute) --- */}
+            {/* --- SETTINGS DROPDOWN --- */}
             {showSettings && (
-                <View style={styles.settingsDropdown}>
-                    {/* Theme Toggle */}
+                <View style={[styles.settingsDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <View style={styles.settingRow}>
-                        <TouchableOpacity
-                            onPress={() => toggleTheme('dark')}
-                            style={[styles.themeOption, theme === 'dark' && styles.themeOptionActive]}
-                        >
-                            <Ionicons name="moon" size={16} color="white" />
-                            <Text style={styles.themeText}>Dark</Text>
+                        <TouchableOpacity onPress={() => updateFontSize(fontSize - 2)} style={[styles.sizeBtn, { backgroundColor: colors.surfaceLight }]}>
+                            <MaterialCommunityIcons name="format-font-size-decrease" size={20} color={colors.text} />
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            onPress={() => toggleTheme('light')}
-                            style={[styles.themeOption, theme === 'light' && styles.themeOptionActive]}
-                        >
-                            <Ionicons name="sunny" size={16} color="white" />
-                            <Text style={styles.themeText}>Light</Text>
-                        </TouchableOpacity>
-                    </View>
+                        <Text style={[styles.sizeValue, { color: colors.accent }]}>{fontSize}</Text>
 
-                    {/* Font Sizer */}
-                    <View style={styles.settingRow}>
-                        <TouchableOpacity onPress={() => updateFontSize(fontSize - 2)} style={styles.sizeBtn}>
-                            <MaterialCommunityIcons name="format-font-size-decrease" size={20} color="white" />
-                        </TouchableOpacity>
-
-                        <Text style={styles.sizeValue}>{fontSize}</Text>
-
-                        <TouchableOpacity onPress={() => updateFontSize(fontSize + 2)} style={styles.sizeBtn}>
-                            <MaterialCommunityIcons name="format-font-size-increase" size={20} color="white" />
+                        <TouchableOpacity onPress={() => updateFontSize(fontSize + 2)} style={[styles.sizeBtn, { backgroundColor: colors.surfaceLight }]}>
+                            <MaterialCommunityIcons name="format-font-size-increase" size={20} color={colors.text} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -164,29 +131,28 @@ export default function SongDetailScreen() {
 
             {/* --- LYRICS SCROLLVIEW --- */}
             <ScrollView
-                style={{ backgroundColor: bgColor }} // Changes based on theme
+                style={{ backgroundColor: colors.bg }}
                 contentContainerStyle={{ paddingBottom: 100, paddingTop: 20 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Minimal Header Inside ScrollView */}
                 <View style={styles.contentHeader}>
-                    <Text style={[styles.mainTitle, { color: textColor }]}>{song.title}</Text>
+                    <Text style={[styles.mainTitle, { color: colors.text }]}>{song.title}</Text>
                     <View style={styles.metaRow}>
-                        <Text style={[styles.metaPill, { color: COLORS.accent, borderColor: COLORS.accent }]}>
+                        <Text style={[styles.metaPill, { color: colors.accent, borderColor: colors.accent }]}>
                             {song.genre || "Gospel"}
                         </Text>
-                        <Text style={[styles.metaText, { color: isLight ? '#6B7280' : COLORS.dark.textSecondary }]}>
+                        <Text style={[styles.metaText, { color: colors.textSecondary }]}>
                             {song.albumId?.title || "Single"}
                         </Text>
                     </View>
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.accent }]} />
 
                 <Text style={[
                     styles.lyrics,
                     {
-                        color: textColor,
+                        color: colors.text,
                         fontSize: fontSize,
                         lineHeight: fontSize * 1.6
                     }
@@ -194,208 +160,64 @@ export default function SongDetailScreen() {
                     {song.lyrics || "Lyrics are not available for this song."}
                 </Text>
 
-                <View style={[styles.footer, { borderColor: isLight ? '#E5E7EB' : COLORS.dark.border }]}>
-                    <Text style={[styles.footerText, { color: isLight ? '#9CA3AF' : COLORS.dark.textSecondary }]}>
+                <View style={[styles.footer, { borderColor: colors.border }]}>
+                    <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                         © {new Date().getFullYear()} {song.churchId?.name || "Church"}
                     </Text>
                 </View>
 
             </ScrollView>
 
-            {/* --- EXTENDED FAB (Bottom Right) --- */}
-            <TouchableOpacity
-                style={styles.extendedFab}
-                activeOpacity={0.9}
-                onPress={() => playSong(song)}
-            >
-                <Ionicons name="play" size={20} color={COLORS.black} />
-                {/* <Text style={styles.fabText}>Listen</Text> */}
-            </TouchableOpacity>
+            {/* --- EXTENDED FAB (Only if Audio Exists) --- */}
+            {hasAudio && (
+                <TouchableOpacity
+                    style={[styles.extendedFab, { backgroundColor: colors.accent }]}
+                    activeOpacity={0.9}
+                    onPress={() => playSong(song)}
+                >
+                    <Ionicons name="play" size={24} color={colors.black} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+            )}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.dark.bg, // Outer container always dark
-    },
-    center: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: COLORS.dark.bg,
-    },
-    // Top Bar
+    container: { flex: 1 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight! + 10 : 50,
-        paddingBottom: 10,
-        paddingHorizontal: SPACING.m,
-        backgroundColor: COLORS.dark.bg,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.dark.border,
-        zIndex: 20, // Sit above everything
+        paddingBottom: 10, paddingHorizontal: SPACING.m, borderBottomWidth: 1, zIndex: 20
     },
-    iconBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    headerTitleContainer: {
-        flex: 1,
-        alignItems: 'center',
-        marginHorizontal: 10,
-    },
-    headerTitle: {
-        color: 'white',
-        fontSize: 16,
-        fontFamily: FONTS.bold,
-    },
-    headerSubtitle: {
-        color: COLORS.dark.textSecondary,
-        fontSize: 12,
-        fontFamily: FONTS.regular,
-    },
-    // Settings Dropdown
+    iconBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+    headerTitleContainer: { flex: 1, alignItems: 'center', marginHorizontal: 10 },
+    headerTitle: { fontSize: 16, fontFamily: FONTS.bold },
+    headerSubtitle: { fontSize: 12, fontFamily: FONTS.regular },
+
     settingsDropdown: {
-        position: 'absolute',
-        top: Platform.OS === 'android' ? StatusBar.currentHeight! + 60 : 100,
-        right: SPACING.m,
-        width: 200,
-        backgroundColor: COLORS.dark.surface, // Always dark popup
-        borderRadius: 12,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: COLORS.dark.border,
-        zIndex: 50, // Topmost
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 10,
+        position: 'absolute', top: Platform.OS === 'android' ? StatusBar.currentHeight! + 60 : 100,
+        right: SPACING.m, width: 160, borderRadius: 12, padding: 12, borderWidth: 1, zIndex: 50,
+        shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 10
     },
-    settingRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: 8,
-        padding: 4,
-    },
-    themeOption: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        borderRadius: 6,
-        gap: 6,
-    },
-    themeOptionActive: {
-        backgroundColor: COLORS.dark.surfaceLight,
-        borderWidth: 1,
-        borderColor: COLORS.dark.border,
-    },
-    themeText: {
-        color: 'white',
-        fontSize: 12,
-        fontFamily: FONTS.medium,
-    },
-    sizeBtn: {
-        width: 40,
-        height: 36,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 6,
-    },
-    sizeValue: {
-        color: COLORS.accent,
-        fontSize: 14,
-        fontFamily: FONTS.bold,
-        width: 30,
-        textAlign: 'center',
-    },
-    // Content
-    contentHeader: {
-        paddingHorizontal: SPACING.l,
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    mainTitle: {
-        fontSize: 24,
-        fontFamily: FONTS.bold,
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    metaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    metaPill: {
-        fontSize: 11,
-        fontFamily: FONTS.bold,
-        borderWidth: 1,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 100,
-        textTransform: 'uppercase',
-    },
-    metaText: {
-        fontSize: 14,
-        fontFamily: FONTS.medium,
-    },
-    divider: {
-        width: 40,
-        height: 2,
-        backgroundColor: COLORS.accent,
-        alignSelf: 'center',
-        marginVertical: 20,
-        opacity: 0.5,
-    },
-    lyrics: {
-        marginHorizontal: SPACING.xxl,
-        paddingHorizontal: SPACING.l,
-        textAlign: 'left', // Center align usually looks best for hymns
-        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    },
-    footer: {
-        marginTop: 60,
-        borderTopWidth: 1,
-        marginHorizontal: SPACING.l,
-        paddingTop: 20,
-        alignItems: 'center',
-    },
-    footerText: {
-        fontSize: 12,
-        fontFamily: FONTS.regular,
-    },
-    // Extended FAB
+    settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    sizeBtn: { width: 40, height: 36, justifyContent: 'center', alignItems: 'center', borderRadius: 6 },
+    sizeValue: { fontSize: 14, fontFamily: FONTS.bold, width: 30, textAlign: 'center' },
+
+    contentHeader: { paddingHorizontal: SPACING.l, alignItems: 'center', marginBottom: 10 },
+    mainTitle: { fontSize: 24, fontFamily: FONTS.bold, textAlign: 'center', marginBottom: 8 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    metaPill: { fontSize: 11, fontFamily: FONTS.bold, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, textTransform: 'uppercase' },
+    metaText: { fontSize: 14, fontFamily: FONTS.medium },
+
+    divider: { width: 40, height: 2, alignSelf: 'center', marginVertical: 20, opacity: 0.5 },
+    lyrics: { marginHorizontal: SPACING.xxl, paddingHorizontal: SPACING.l, textAlign: 'left', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' },
+    footer: { marginTop: 60, borderTopWidth: 1, marginHorizontal: SPACING.l, paddingTop: 20, alignItems: 'center' },
+    footerText: { fontSize: 12, fontFamily: FONTS.regular },
+
     extendedFab: {
-        position: 'absolute',
-        // left: 20,
-        right: 20,
-        bottom: 40,
-        height: 60,
-        width: 60,
-        alignSelf: 'center',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: COLORS.accent,
-        borderRadius: 100,
-        zIndex: 30,
-    },
-    // fabText: {
-    //     color: COLORS.black,
-    //     fontSize: 16,
-    //     fontFamily: FONTS.bold,
-    //     textTransform: 'uppercase',
-    //     letterSpacing: 0.5,
-    // }
+        position: 'absolute', right: 20, bottom: 40, height: 60, width: 60,
+        alignItems: 'center', justifyContent: 'center', borderRadius: 30, zIndex: 30,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6
+    }
 });

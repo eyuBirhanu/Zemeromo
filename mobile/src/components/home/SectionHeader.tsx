@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING, FONTS } from '../../constants/theme';
+import { SPACING, FONTS } from '../../constants/theme';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
     title: string;
@@ -8,13 +9,15 @@ interface Props {
 }
 
 export default function SectionHeader({ title, onSeeAll }: Props) {
+    const colors = useThemeColors();
+
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>{title}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
 
             {onSeeAll && (
                 <TouchableOpacity onPress={onSeeAll} hitSlop={10}>
-                    <Text style={styles.action}>See all</Text>
+                    <Text style={[styles.action, { color: colors.primary }]}>See all</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -31,13 +34,11 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.m,
     },
     title: {
-        color: COLORS.dark.text,
         fontSize: 18,
         fontFamily: FONTS.bold,
         letterSpacing: -0.2,
     },
     action: {
-        color: COLORS.primary, // Emerald Green
         fontSize: 13,
         fontFamily: FONTS.medium,
     },

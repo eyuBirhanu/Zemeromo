@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, FONTS } from '../../constants/theme';
+import { SPACING, FONTS } from '../../constants/theme';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface ArtistItem {
     id: string;
@@ -17,10 +18,12 @@ interface Props {
 }
 
 export default function ArtistCard({ artist, onPress }: Props) {
+    const colors = useThemeColors();
+
     return (
         <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
             {/* Image Container with subtle border */}
-            <View style={styles.imageContainer}>
+            <View style={[styles.imageContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Image
                     source={{ uri: artist.image || 'https://via.placeholder.com/150' }}
                     style={styles.image}
@@ -29,17 +32,17 @@ export default function ArtistCard({ artist, onPress }: Props) {
 
             {/* Info */}
             <View style={styles.info}>
-                <Text style={styles.name} numberOfLines={1}>{artist.name}</Text>
+                <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
 
-                <Text style={styles.church} numberOfLines={1}>
+                <Text style={[styles.church, { color: colors.textSecondary }]} numberOfLines={1}>
                     {artist.churchName}
                 </Text>
 
                 {/* Subtle Album Counter */}
                 {artist.albumCount > 0 && (
                     <View style={styles.statsRow}>
-                        <Ionicons name="disc-outline" size={10} color={COLORS.primary} />
-                        <Text style={styles.statsText}>{artist.albumCount} Albums</Text>
+                        <Ionicons name="disc-outline" size={10} color={colors.primary} />
+                        <Text style={[styles.statsText, { color: colors.primary }]}>{artist.albumCount} Albums</Text>
                     </View>
                 )}
             </View>
@@ -51,10 +54,6 @@ const styles = StyleSheet.create({
     container: {
         width: 130, // Clean width
         marginRight: SPACING.m,
-        // Removed background color for cleaner "floating" look, or keep slight surface
-        // backgroundColor: COLORS.dark.surface, 
-        // borderRadius: 12,
-        // padding: SPACING.s,
     },
     imageContainer: {
         width: 130,
@@ -62,9 +61,7 @@ const styles = StyleSheet.create({
         borderRadius: 16, // Matches Featured Card radius
         overflow: 'hidden',
         marginBottom: SPACING.s,
-        backgroundColor: COLORS.dark.surface,
         borderWidth: 1,
-        borderColor: COLORS.dark.border,
     },
     image: {
         width: '100%',
@@ -75,13 +72,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
     },
     name: {
-        color: COLORS.dark.text,
         fontFamily: FONTS.bold,
         fontSize: 14,
         marginBottom: 2,
     },
     church: {
-        color: COLORS.dark.textSecondary,
         fontFamily: FONTS.medium,
         fontSize: 11,
         marginBottom: 4,
@@ -92,7 +87,6 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     statsText: {
-        color: COLORS.primary, // Emerald
         fontFamily: FONTS.medium,
         fontSize: 10,
     }

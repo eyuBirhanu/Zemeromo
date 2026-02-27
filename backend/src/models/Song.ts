@@ -2,8 +2,9 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface ISong extends Document {
     title: string;
-    lyrics: string;
-    audioUrl: string;
+    lyrics?: string;
+    audioUrl?: string;
+    fileSize: number;
     duration: number;
     thumbnailUrl: string;
 
@@ -19,6 +20,9 @@ export interface ISong extends Document {
         composer?: string;
         arranger?: string;
     };
+
+
+
 
     genre: string;
     tags: string[];
@@ -38,8 +42,9 @@ export interface ISong extends Document {
 
 const SongSchema = new Schema<ISong>({
     title: { type: String, required: true, trim: true }, // Removed 'index: true' here to group it below
-    lyrics: { type: String, required: true },
-    audioUrl: { type: String, required: true },
+    lyrics: { type: String, default: "" },
+    audioUrl: { type: String, default: "" },
+    fileSize: { type: Number, default: 0 },
     duration: { type: Number, default: 0 },
     thumbnailUrl: { type: String },
 

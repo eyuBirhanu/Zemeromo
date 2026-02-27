@@ -1,39 +1,31 @@
 import React, { useState } from 'react';
 import {
     View, Text, Image, TouchableOpacity, StyleSheet, Dimensions,
-    ActivityIndicator, ScrollView, StatusBar
+    ScrollView, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { COLORS, SPACING } from '../constants/theme';
+import { SPACING, FONTS } from '../constants/theme';
 import { usePlayerStore } from '../store/playerStore';
-import { downloadSong } from '../services/downloadService';
+import { useThemeColors } from '../hooks/useThemeColors'; // Theme Hook
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function PlayerScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const colors = useThemeColors();
     const { song: paramSong } = route.params || {};
 
     const {
-        isPlaying,
-        playSong,
-        pauseSound,
-        resumeSound,
-        currentSong,
-        position,
-        duration,
-        seekTo,
-        skipToNext,
-        skipToPrevious
+        isPlaying, playSong, pauseSound, resumeSound,
+        currentSong, position, duration, seekTo, skipToNext, skipToPrevious
     } = usePlayerStore();
 
-    const [isDownloading, setIsDownloading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [dragValue, setDragValue] = useState(0);
 
@@ -55,15 +47,6 @@ export default function PlayerScreen() {
         }
     };
 
-    const handleDownload = async () => {
-        if (!activeSong || isDownloading) return;
-        setIsDownloading(true);
-        const uri = await downloadSong(activeSong._id, activeSong.audioUrl);
-        setIsDownloading(false);
-        if (uri) alert("Downloaded!");
-    };
-
-    // --- NAVIGATION ---
     const openLyrics = () => {
         if (activeSong) navigation.navigate('SongDetail', { id: activeSong._id });
     };
@@ -73,34 +56,38 @@ export default function PlayerScreen() {
         if (artistId) navigation.navigate('ArtistDetail', { id: artistId });
     };
 
-    if (!activeSong) return <View style={styles.container} />;
+    if (!activeSong) return <View style={[styles.container, { backgroundColor: colors.bg }]} />;
 
     const artistName = typeof activeSong.artistId === 'object' ? activeSong.artistId?.name : "Unknown Artist";
     const artistImage = typeof activeSong.artistId === 'object' ? activeSong.artistId?.imageUrl : null;
 
     return (
         <View style={styles.container}>
+            {/* Dark Status Bar for immersive feel */}
             <StatusBar barStyle="light-content" />
 
-            {/* Background Gradient */}
+            {/* Background Gradient (Always Dark for Player Vibe) */}
             <LinearGradient
-                colors={[COLORS.primary, '#121212', '#000000']}
+                colors={colors.isDark ? ['#1E3A8A', '#121212', '#000000'] : ['#E5E7EB', '#FFFFFF']}
                 locations={[0, 0.5, 1]}
                 style={StyleSheet.absoluteFillObject}
             />
+            {/* If Light Mode, add a blur overlay to ensure text contrast if we want to keep dark text, 
+                BUT standard players usually keep dark backgrounds. 
+                Let's adapt the text colors instead. */}
 
             <SafeAreaView style={{ flex: 1 }}>
 
-                {/* 1. HEADER (Fixed) */}
+                {/* 1. HEADER */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-                        <Feather name="chevron-down" size={28} color="white" />
+                        <Feather name="chevron-down" size={28} color={colors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle} numberOfLines={1}>
+                    <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
                         {activeSong.albumId?.title || "NOW PLAYING"}
                     </Text>
                     <TouchableOpacity style={styles.iconBtn}>
-                        <MaterialCommunityIcons name="dots-horizontal" size={28} color="white" />
+                        <MaterialCommunityIcons name="dots-horizontal" size={28} color={colors.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -115,23 +102,17 @@ export default function PlayerScreen() {
                         <View style={styles.artContainer}>
                             <Image
                                 source={{ uri: activeSong.thumbnailUrl || activeSong.albumId?.coverImageUrl }}
-                                style={styles.art}
+                                style={[styles.art, { borderColor: colors.border, borderWidth: 1 }]}
                             />
                         </View>
 
                         {/* Title & Artist Row */}
                         <View style={styles.trackInfoRow}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.title} numberOfLines={1}>{activeSong.title}</Text>
-                                <Text style={styles.artist}>{artistName}</Text>
+                                <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{activeSong.title}</Text>
+                                <Text style={[styles.artist, { color: colors.textSecondary }]}>{artistName}</Text>
                             </View>
-                            <TouchableOpacity onPress={handleDownload}>
-                                {isDownloading ? (
-                                    <ActivityIndicator color={COLORS.accent} />
-                                ) : (
-                                    <Feather name="download-cloud" size={24} color={COLORS.dark.textSecondary} />
-                                )}
-                            </TouchableOpacity>
+                            {/* Removed Download Button as requested */}
                         </View>
 
                         {/* Slider */}
@@ -141,78 +122,72 @@ export default function PlayerScreen() {
                                 minimumValue={0}
                                 maximumValue={duration || 1}
                                 value={isDragging ? dragValue : position}
-                                minimumTrackTintColor="white"
-                                maximumTrackTintColor="rgba(255,255,255,0.2)"
-                                thumbTintColor="white"
+                                minimumTrackTintColor={colors.accent}
+                                maximumTrackTintColor={colors.isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"}
+                                thumbTintColor={colors.text}
                                 onSlidingStart={() => setIsDragging(true)}
                                 onValueChange={setDragValue}
                                 onSlidingComplete={(val) => { seekTo(val); setIsDragging(false); }}
                             />
                             <View style={styles.timeRow}>
-                                <Text style={styles.timeText}>{formatTime(isDragging ? dragValue : position)}</Text>
-                                <Text style={styles.timeText}>{formatTime(duration)}</Text>
+                                <Text style={[styles.timeText, { color: colors.textSecondary }]}>{formatTime(isDragging ? dragValue : position)}</Text>
+                                <Text style={[styles.timeText, { color: colors.textSecondary }]}>{formatTime(duration)}</Text>
                             </View>
                         </View>
 
                         {/* Controls */}
                         <View style={styles.controls}>
                             <TouchableOpacity>
-                                <Ionicons name="shuffle" size={24} color={COLORS.accent} />
+                                <Ionicons name="shuffle" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={skipToPrevious}>
-                                <Ionicons name="play-skip-back" size={36} color="white" />
+                                <Ionicons name="play-skip-back" size={36} color={colors.text} />
                             </TouchableOpacity>
 
-                            <TouchableOpacity onPress={handlePlayPause} style={styles.playBtn}>
+                            <TouchableOpacity onPress={handlePlayPause} style={[styles.playBtn, { backgroundColor: colors.text }]}>
                                 <Ionicons
                                     name={isPlaying ? "pause" : "play"}
                                     size={36}
-                                    color="black"
+                                    color={colors.bg} // Invert color for icon
                                     style={{ marginLeft: isPlaying ? 0 : 4 }}
                                 />
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={skipToNext}>
-                                <Ionicons name="play-skip-forward" size={36} color="white" />
+                                <Ionicons name="play-skip-forward" size={36} color={colors.text} />
                             </TouchableOpacity>
 
                             <TouchableOpacity>
-                                <MaterialIcons name="repeat" size={24} color={COLORS.dark.textSecondary} />
+                                <MaterialIcons name="repeat" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    {/* 3. LYRICS CARD (Preview) */}
-                    <TouchableOpacity onPress={openLyrics} activeOpacity={0.9} style={styles.lyricsCard}>
+                    {/* 3. LYRICS CARD */}
+                    <TouchableOpacity onPress={openLyrics} activeOpacity={0.9} style={[styles.lyricsCard, { backgroundColor: colors.isDark ? '#7D2E68' : '#FBCFE8' }]}>
                         <View style={styles.lyricsHeader}>
-                            <Text style={styles.lyricsTitle}>Lyrics</Text>
-                            <Feather name="maximize-2" size={16} color="white" />
+                            <Text style={[styles.lyricsTitle, { color: colors.isDark ? 'white' : 'black' }]}>Lyrics</Text>
+                            <Feather name="maximize-2" size={16} color={colors.isDark ? 'white' : 'black'} />
                         </View>
-                        <Text style={styles.lyricsPreview} numberOfLines={3}>
+                        <Text style={[styles.lyricsPreview, { color: colors.isDark ? 'white' : 'black' }]} numberOfLines={3}>
                             {activeSong.lyrics ? activeSong.lyrics : "No lyrics available. Tap to verify."}
                         </Text>
-                        <View style={styles.lyricsFooter}>
-                            <Text style={styles.lyricsTag}>TAP TO READ FULL LYRICS</Text>
-                        </View>
                     </TouchableOpacity>
 
-                    {/* 4. ABOUT THE ARTIST (Spotify Style) */}
-                    <TouchableOpacity onPress={openArtist} activeOpacity={0.9} style={styles.artistCard}>
-                        <Text style={styles.cardHeader}>About the artist</Text>
+                    {/* 4. ARTIST CARD */}
+                    <TouchableOpacity onPress={openArtist} activeOpacity={0.9} style={[styles.artistCard, { backgroundColor: colors.surface }]}>
+                        <Text style={[styles.cardHeader, { color: 'white' }]}>About the artist</Text>
 
                         {artistImage && (
                             <Image source={{ uri: artistImage }} style={styles.artistCardImage} />
                         )}
 
                         <View style={styles.artistCardContent}>
-                            <Text style={styles.artistCardName}>{artistName}</Text>
+                            <Text style={[styles.artistCardName, { color: 'white' }]}>{artistName}</Text>
                             <View style={styles.artistFollowRow}>
-                                <Text style={styles.artistDesc} numberOfLines={2}>
-                                    {activeSong.artistId?.description || "A dedicated worship ministry serving the Lord through song."}
-                                </Text>
-                                <View style={styles.followBtn}>
-                                    <Text style={styles.followText}>See Profile</Text>
+                                <View style={[styles.followBtn, { borderColor: 'white' }]}>
+                                    <Text style={[styles.followText, { color: 'white' }]}>See Profile</Text>
                                 </View>
                             </View>
                         </View>
@@ -225,7 +200,7 @@ export default function PlayerScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000' },
+    container: { flex: 1 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -234,28 +209,25 @@ const styles = StyleSheet.create({
         marginTop: SPACING.s,
         marginBottom: SPACING.m
     },
-    headerTitle: { color: 'white', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, flex: 1, textAlign: 'center' },
+    headerTitle: { fontSize: 12, fontFamily: FONTS.bold, letterSpacing: 1, flex: 1, textAlign: 'center' },
     iconBtn: { padding: 8 },
 
     playerSection: { paddingHorizontal: SPACING.l, marginBottom: 20 },
-
     artContainer: { alignItems: 'center', marginBottom: 24 },
-    art: { width: width - 48, height: width - 48, borderRadius: 12, backgroundColor: '#333' },
+    art: { width: width - 48, height: width - 48, borderRadius: 12 },
 
     trackInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    title: { color: 'white', fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
-    artist: { color: COLORS.dark.textSecondary, fontSize: 18 },
+    title: { fontSize: 24, fontFamily: FONTS.bold, marginBottom: 4 },
+    artist: { fontSize: 18, fontFamily: FONTS.medium },
 
     sliderContainer: { marginBottom: 10 },
     timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: -5 },
-    timeText: { color: COLORS.dark.textSecondary, fontSize: 12 },
+    timeText: { fontSize: 12, fontFamily: FONTS.regular },
 
     controls: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    playBtn: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' },
+    playBtn: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
 
-    // LYRICS CARD
     lyricsCard: {
-        backgroundColor: '#7D2E68', // Fallback color, dynamic extraction would be better
         marginHorizontal: SPACING.m,
         borderRadius: 12,
         padding: 16,
@@ -264,25 +236,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between'
     },
     lyricsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    lyricsTitle: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-    lyricsPreview: { color: 'white', fontSize: 18, fontWeight: '600', lineHeight: 24 },
-    lyricsFooter: { marginTop: 8 },
-    lyricsTag: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
+    lyricsTitle: { fontFamily: FONTS.bold, fontSize: 16 },
+    lyricsPreview: { fontSize: 18, fontFamily: FONTS.medium, lineHeight: 24 },
 
-    // ARTIST CARD
     artistCard: {
-        backgroundColor: '#242424',
         marginHorizontal: SPACING.m,
         borderRadius: 12,
         overflow: 'hidden',
         marginBottom: 40,
     },
-    cardHeader: { color: 'white', fontWeight: 'bold', fontSize: 16, padding: 16, position: 'absolute', zIndex: 10, top: 0 },
+    cardHeader: { fontFamily: FONTS.bold, fontSize: 16, padding: 16, position: 'absolute', zIndex: 10, top: 0 },
     artistCardImage: { width: '100%', height: 180, opacity: 0.7 },
     artistCardContent: { padding: 16, marginTop: -40 },
-    artistCardName: { color: 'white', fontSize: 24, fontWeight: 'bold', marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.7)', textShadowRadius: 10 },
+    artistCardName: { fontSize: 24, fontFamily: FONTS.bold, marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.7)', textShadowRadius: 10 },
     artistFollowRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    artistDesc: { color: '#ccc', fontSize: 13, flex: 1, marginRight: 10 },
-    followBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: 'white' },
-    followText: { color: 'white', fontWeight: 'bold', fontSize: 12 }
+    followBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1 },
+    followText: { fontFamily: FONTS.bold, fontSize: 12 }
 });

@@ -39,7 +39,7 @@ export default function Error({
                 <div className="flex flex-col sm:flex-row gap-4 w-full">
                     <button
                         onClick={() => reset()}
-                        className="flex-1 flex items-center justify-center gap-2 bg-white text-dark-bg hover:bg-gray-200 font-bold px-6 py-3 rounded-xl transition-all"
+                        className="flex-1 flex items-center text-nowrap justify-center gap-2 bg-white text-dark-bg hover:bg-gray-200 font-bold px-6 py-3 rounded-xl transition-all"
                     >
                         <RefreshCcw size={18} />
                         Try Again
@@ -47,7 +47,7 @@ export default function Error({
 
                     <Link
                         href="/dashboard"
-                        className="flex-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold px-6 py-3 rounded-xl transition-all"
+                        className="flex-1 flex items-center text-nowrap justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold px-6 py-3 rounded-xl transition-all"
                     >
                         <Home size={18} />
                         Go Dashboard

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import { COLORS, SPACING, FONTS } from '../../constants/theme';
+import { SPACING, FONTS } from '../../constants/theme';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const FILTERS = ["All", "Song", "Artist", "Album", "Church"];
 
@@ -10,6 +11,8 @@ interface FilterPillsProps {
 }
 
 export default function FilterPills({ activeFilter, onSelect }: FilterPillsProps) {
+    const colors = useThemeColors();
+
     return (
         <View style={styles.wrapper}>
             <ScrollView
@@ -27,15 +30,15 @@ export default function FilterPills({ activeFilter, onSelect }: FilterPillsProps
                             style={[
                                 styles.pill,
                                 isActive
-                                    ? { backgroundColor: COLORS.primary } // Emerald
-                                    : { backgroundColor: COLORS.dark.surface } // Dark Grey
+                                    ? { backgroundColor: colors.primary } // Emerald
+                                    : { backgroundColor: colors.surface } // Surface color
                             ]}
                         >
                             <Text style={[
                                 styles.text,
                                 isActive
-                                    ? { color: COLORS.white }
-                                    : { color: COLORS.dark.textSecondary }
+                                    ? { color: colors.white }
+                                    : { color: colors.textSecondary }
                             ]}>
                                 {filter}
                             </Text>
@@ -48,20 +51,15 @@ export default function FilterPills({ activeFilter, onSelect }: FilterPillsProps
 }
 
 const styles = StyleSheet.create({
-    wrapper: {
-        marginBottom: SPACING.m,
-    },
-    container: {
-        paddingHorizontal: SPACING.m,
-        paddingVertical: 4,
-    },
+    wrapper: { marginBottom: SPACING.m },
+    container: { paddingHorizontal: SPACING.m, paddingVertical: 4 },
     pill: {
         paddingHorizontal: 20,
         paddingVertical: 8,
-        borderRadius: 100, // Pill shape
+        borderRadius: 100,
         marginRight: 10,
         borderWidth: 1,
-        borderColor: 'transparent', // Cleaner than having borders on inactive
+        borderColor: 'transparent',
     },
     text: {
         fontSize: 13,

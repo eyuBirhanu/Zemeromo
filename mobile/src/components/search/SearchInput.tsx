@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, FONTS } from '../../constants/theme';
+import { SPACING, FONTS } from '../../constants/theme';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface SearchInputProps {
     value: string;
@@ -12,36 +13,38 @@ interface SearchInputProps {
 
 export default function SearchInput({ value, onChangeText, placeholder, autoFocus }: SearchInputProps) {
     const [isFocused, setIsFocused] = useState(false);
+    const colors = useThemeColors();
 
     return (
         <View style={[
             styles.container,
-            isFocused && styles.containerFocused
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            isFocused && { borderColor: colors.accent, backgroundColor: colors.isDark ? 'rgba(212, 244, 121, 0.05)' : 'rgba(16, 185, 129, 0.05)' }
         ]}>
             <Ionicons
                 name="search"
                 size={20}
-                color={isFocused ? COLORS.accent : COLORS.dark.textSecondary}
+                color={isFocused ? colors.accent : colors.textSecondary}
                 style={styles.icon}
             />
 
             <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 value={value}
                 onChangeText={onChangeText}
                 placeholder={placeholder || "Search songs, artists..."}
-                placeholderTextColor={COLORS.dark.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoFocus={autoFocus}
-                selectionColor={COLORS.accent}
+                selectionColor={colors.accent}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
             />
 
             {value.length > 0 && (
                 <TouchableOpacity onPress={() => onChangeText("")} hitSlop={10}>
-                    <Ionicons name="close-circle" size={18} color={COLORS.dark.textSecondary} />
+                    <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
             )}
         </View>
@@ -52,24 +55,15 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.dark.surface,
         height: 52,
         borderRadius: 14,
         paddingHorizontal: SPACING.m,
         borderWidth: 1,
-        borderColor: COLORS.dark.border,
         marginBottom: SPACING.s,
     },
-    containerFocused: {
-        borderColor: COLORS.accent, // Lime Border on Focus
-        backgroundColor: 'rgba(212, 244, 121, 0.05)', // Very subtle Lime tint
-    },
-    icon: {
-        marginRight: 10,
-    },
+    icon: { marginRight: 10 },
     input: {
         flex: 1,
-        color: COLORS.white,
         fontFamily: FONTS.medium,
         fontSize: 15,
         height: '100%',

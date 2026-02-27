@@ -87,7 +87,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                         className="flex items-center gap-3 pl-1 pr-2 py-1 rounded-full hover:bg-white/5 transition-all"
                     >
                         {/* Avatar */}
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-emerald-800 flex items-center justify-center text-white font-bold text-sm shadow-lg border border-white/10">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent/70 to-accent/10 flex items-center justify-center text-white font-bold text-sm shadow-lg border border-white/10">
                             {user?.username ? user.username.charAt(0).toUpperCase() : "A"}
                         </div>
 
@@ -121,13 +121,13 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                             {/* Info Section (Read Only) */}
                             <div className="p-2 space-y-1">
                                 <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400">
-                                    <Building2 size={16} className="text-primary" />
+                                    <Building2 size={16} className="text-accent/70" />
                                     <span>
                                         {user?.role == "super_admin" ? "Headquarters" : user?.churchName}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400">
-                                    <UserIcon size={16} className="text-primary" />
+                                    <UserIcon size={16} className="text-accent/70" />
                                     <span className="capitalize">{user?.role.replace("_", " ")}</span>
                                 </div>
                             </div>

@@ -2,7 +2,7 @@ import { Dimensions } from "react-native";
 const { width, height } = Dimensions.get("window");
 
 export const COLORS = {
-    // Brand Identity
+    // Brand Identity (Restored!)
     primary: '#10B981', // Emerald (Gradients / Badges)
     accent: '#D4F479',  // LIME (Primary Action Buttons - The "Pop")
 
@@ -14,6 +14,16 @@ export const COLORS = {
         text: '#FFFFFF',      // Primary Text
         textSecondary: '#9CA3AF', // Subtitles
         border: 'rgba(255,255,255,0.08)', // Subtle dividers
+    },
+
+    // Light Mode (New - Clean & Readable)
+    light: {
+        bg: '#F3F4F6',        // Soft Light Gray
+        surface: '#FFFFFF',   // Pure White Cards
+        surfaceLight: '#E5E7EB', // Lighter Surface for borders
+        text: '#111827',      // Near Black for high contrast
+        textSecondary: '#6B7280', // Medium Gray
+        border: 'rgba(0,0,0,0.08)', // Subtle dark dividers
     },
 
     // Utilities
@@ -32,7 +42,7 @@ export const SPACING = {
 };
 
 export const FONTS = {
-    bold: 'Inter-Bold',     // Ensure these fonts are loaded in App.tsx
+    bold: 'Inter-Bold',
     medium: 'Inter-Medium',
     regular: 'Inter-Regular',
 };

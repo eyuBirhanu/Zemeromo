@@ -6,7 +6,7 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Music, Save, Loader2, ArrowLeft, Mic2, FileAudio, Users } from "lucide-react";
+import { Music, Save, Loader2, ArrowLeft, Mic2, FileAudio, Users, CheckCircle2 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -16,7 +16,7 @@ import ImageUpload from "@/components/ui/ImageUpload";
 import TagInput from "@/components/ui/TagInput";
 import Toggle from "@/components/ui/Toggle";
 
-// --- 1. Validation Schema (FIXED: Removed .default() to prevent TS mismatch) ---
+// --- 1. Validation Schema ---
 const songSchema = z.object({
     title: z.string().min(2, "Title is required"),
     lyrics: z.string().min(10, "Lyrics are required"),
@@ -76,11 +76,14 @@ export default function SongForm({ songId }: SongFormProps) {
     const [artists, setArtists] = useState<{ value: string; label: string }[]>([]);
     const [albums, setAlbums] = useState<{ value: string; label: string }[]>([]);
 
-    // Selected States
+    // State
     const [selectedChurch, setSelectedChurch] = useState<string>("");
     const [customLanguage, setCustomLanguage] = useState("");
 
-    // --- Form Hook (FIXED: Provided complete defaultValues) ---
+    // NEW: Upload Progress State
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    // --- Form Hook ---
     const {
         register,
         control,
@@ -124,7 +127,6 @@ export default function SongForm({ songId }: SongFormProps) {
                     setChurches(options);
                 }
                 else if (user?.role === 'church_admin') {
-                    // FIX: Safe access to user.churchId
                     const userChurchId = user.churchId || "";
                     setSelectedChurch(userChurchId);
 
@@ -209,10 +211,11 @@ export default function SongForm({ songId }: SongFormProps) {
 
     // --- 3. SUBMIT ---
     const onSubmit = async (data: SongFormData) => {
-        if (!audioFile && !isEditMode) {
-            toast.error("Audio file is required for new songs");
-            return;
-        }
+        // FIX: REMOVED THE BLOCKER. Audio is now optional.
+        // If they don't provide audio, it just means it's a Lyric-only entry.
+
+        // Reset progress before starting
+        setUploadProgress(0);
 
         try {
             const formData = new FormData();
@@ -235,25 +238,44 @@ export default function SongForm({ songId }: SongFormProps) {
                 data.tags.forEach(tag => formData.append("tags[]", tag));
             }
 
-            if (audioFile) formData.append("audio", audioFile);
-            if (thumbnailFile) formData.append("thumbnail", thumbnailFile);
+            if (audioFile) {
+                formData.append("audio", audioFile);
+            }
+            if (thumbnailFile) {
+                formData.append("thumbnail", thumbnailFile);
+            }
 
             const endpoint = isEditMode ? `/songs/${songId}` : "/songs";
             const method = isEditMode ? api.put : api.post;
 
-            await method(endpoint, formData, { headers: { "Content-Type": "multipart/form-data" } });
+            await method(endpoint, formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+                onUploadProgress: (progressEvent) => {
+                    const total = progressEvent.total || 1;
+                    const current = progressEvent.loaded;
+                    const percent = Math.floor((current / total) * 100);
+                    setUploadProgress(percent);
+                }
+            });
+
+            setUploadProgress(100);
 
             toast.success(isEditMode ? "Song Updated" : "Song Uploaded");
-            router.push("/dashboard/songs");
+
+            setTimeout(() => {
+                router.push("/dashboard/songs");
+            }, 500);
 
         } catch (error: any) {
             console.error(error);
+            setUploadProgress(0);
             toast.error(error.response?.data?.message || "Operation Failed");
         }
     };
 
     return (
         <div className="max-w-5xl mx-auto pb-32">
+            {/* Header */}
             <div className="mb-8">
                 <button onClick={() => router.back()} className="text-gray-400 hover:text-white flex items-center gap-2 mb-4 text-sm transition-colors">
                     <ArrowLeft size={16} /> Back to Library
@@ -273,6 +295,7 @@ export default function SongForm({ songId }: SongFormProps) {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
+                {/* Super Admin Church Select */}
                 {user?.role === 'super_admin' && (
                     <div className="bg-[#1a1f2b] border border-white/10 p-6 rounded-2xl">
                         <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -280,7 +303,7 @@ export default function SongForm({ songId }: SongFormProps) {
                         </h3>
                         <Select
                             label="Select Church"
-                            options={churches} // Fixed: Already mapped above
+                            options={churches}
                             value={selectedChurch}
                             onChange={handleChurchChange}
                             placeholder="Choose owner..."
@@ -288,6 +311,7 @@ export default function SongForm({ songId }: SongFormProps) {
                     </div>
                 )}
 
+                {/* Info Section */}
                 <section className="bg-[#1a1f2b] border border-white/10 p-6 md:p-8 rounded-2xl space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
@@ -300,7 +324,7 @@ export default function SongForm({ songId }: SongFormProps) {
                             render={({ field }) => (
                                 <Select
                                     label="Artist / Choir"
-                                    options={artists} // Fixed: Already mapped above
+                                    options={artists}
                                     value={field.value}
                                     onChange={(val) => handleArtistChange(val)}
                                     error={errors.artistId?.message}
@@ -316,7 +340,7 @@ export default function SongForm({ songId }: SongFormProps) {
                             render={({ field }) => (
                                 <Select
                                     label="Album"
-                                    options={albums} // Fixed: Already mapped above
+                                    options={albums}
                                     value={field.value}
                                     onChange={field.onChange}
                                     error={errors.albumId?.message}
@@ -359,11 +383,13 @@ export default function SongForm({ songId }: SongFormProps) {
                     </div>
                 </section>
 
+                {/* Media Section */}
                 <section className="bg-[#1a1f2b] border border-white/10 p-6 md:p-8 rounded-2xl space-y-6">
                     <div className="grid md:grid-cols-2 gap-8">
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-400">Audio File</label>
+                                {/* FIX: Label changed to Optional */}
+                                <label className="text-sm font-medium text-gray-400">Audio File (Optional)</label>
                                 <div className={`border border-dashed rounded-xl p-6 text-center transition-colors ${audioFile ? "border-accent bg-accent/5" : "border-white/20 hover:border-white/40"}`}>
                                     <input
                                         type="file"
@@ -386,7 +412,7 @@ export default function SongForm({ songId }: SongFormProps) {
                                         )}
                                     </label>
                                 </div>
-                                {!isEditMode && !audioFile && <p className="text-xs text-red-400">Required</p>}
+                                <p className="text-xs text-gray-600 mt-1">Upload mp3/m4a if available. Not required for lyrics.</p>
                             </div>
 
                             <ImageUpload
@@ -408,6 +434,7 @@ export default function SongForm({ songId }: SongFormProps) {
                     </div>
                 </section>
 
+                {/* Credits & Submit */}
                 <section className="bg-[#1a1f2b] border border-white/10 p-6 md:p-8 rounded-2xl space-y-6">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
                         <Users size={20} className="text-accent" /> Credits & Metadata
@@ -458,12 +485,44 @@ export default function SongForm({ songId }: SongFormProps) {
                     </div>
                 </section>
 
-                <div className="flex justify-end gap-4">
-                    <button type="button" onClick={() => router.back()} className="px-6 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-8 py-3 bg-accent text-dark-bg font-bold rounded-xl hover:bg-accent-hover transition-all flex items-center gap-2 shadow-glow">
-                        {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                        {isEditMode ? "Save Changes" : "Upload & Publish"}
-                    </button>
+                {/* Footer Actions (Modified with Progress Bar) */}
+                <div className="flex flex-col gap-4">
+
+                    {/* NEW: Progress Bar Indicator */}
+                    {isSubmitting && (
+                        <div className="w-full bg-white/5 rounded-full h-3 overflow-hidden border border-white/10">
+                            <div
+                                className="h-full bg-accent transition-all duration-300 ease-out shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+                                style={{ width: `${uploadProgress}%` }}
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-4 items-center">
+                        {isSubmitting && uploadProgress > 0 && (
+                            <span className="text-xs text-accent font-mono animate-pulse">
+                                Uploading: {uploadProgress}%
+                            </span>
+                        )}
+
+                        <button type="button" onClick={() => router.back()} className="px-6 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                            Cancel
+                        </button>
+
+                        <button type="submit" disabled={isSubmitting} className="px-8 py-3 bg-accent text-dark-bg font-bold rounded-xl hover:bg-accent-hover transition-all flex items-center gap-2 shadow-glow disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={20} />
+                                    {uploadProgress === 100 ? "Finalizing..." : "Processing..."}
+                                </>
+                            ) : (
+                                <>
+                                    <Save size={20} />
+                                    {isEditMode ? "Save Changes" : "Upload & Publish"}
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

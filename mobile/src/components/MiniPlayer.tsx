@@ -1,12 +1,14 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { usePlayerStore } from '../store/playerStore';
-import { COLORS, FONTS } from '../constants/theme';
+import { FONTS } from '../constants/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 export default function MiniPlayer() {
     const navigation = useNavigation<any>();
+    const colors = useThemeColors();
 
     const {
         currentSong,
@@ -19,7 +21,6 @@ export default function MiniPlayer() {
 
     if (!currentSong) return null;
 
-    // Calculate Progress
     const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
 
     const handlePlayPause = (e: any) => {
@@ -33,33 +34,35 @@ export default function MiniPlayer() {
     };
 
     return (
-        <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={1}>
-            {/* 1. Progress Bar (Top Line) */}
-            <View style={styles.progressBarBackground}>
-                <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+        <TouchableOpacity
+            style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.border }]}
+            onPress={handlePress}
+            activeOpacity={1}
+        >
+            {/* Progress Bar */}
+            <View style={[styles.progressBarBackground, { backgroundColor: colors.surfaceLight }]}>
+                <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: colors.accent }]} />
             </View>
 
             <View style={styles.contentRow}>
-                {/* 2. Art */}
+                {/* Art */}
                 <Image
                     source={{ uri: currentSong.thumbnailUrl || currentSong.albumId?.coverImageUrl || 'https://via.placeholder.com/50' }}
-                    style={styles.art}
+                    style={[styles.art, { backgroundColor: colors.surfaceLight }]}
                 />
 
-                {/* 3. Text Info */}
+                {/* Text Info */}
                 <View style={styles.info}>
-                    <Text style={styles.title} numberOfLines={1}>{currentSong.title}</Text>
-                    <Text style={styles.artist} numberOfLines={1}>
+                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{currentSong.title}</Text>
+                    <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
                         {currentSong.artistId?.name || "Unknown Artist"}
                     </Text>
                 </View>
 
-                {/* 4. Controls */}
+                {/* Controls */}
                 <View style={styles.controls}>
-                    {/* Favorite/Heart could go here */}
-
                     <TouchableOpacity onPress={handlePlayPause} style={styles.playBtn} hitSlop={10}>
-                        <Ionicons name={isPlaying ? "pause" : "play"} size={28} color={COLORS.white} />
+                        <Ionicons name={isPlaying ? "pause" : "play"} size={28} color={colors.text} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -70,19 +73,15 @@ export default function MiniPlayer() {
 const styles = StyleSheet.create({
     container: {
         width: '100%',
-        height: 64, // Fixed height
-        backgroundColor: COLORS.dark.surface, // Slightly lighter than bg
+        height: 64,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
     },
     progressBarBackground: {
         width: '100%',
         height: 2,
-        backgroundColor: 'rgba(255,255,255,0.1)',
     },
     progressBarFill: {
         height: '100%',
-        backgroundColor: COLORS.accent, // Lime Progress
     },
     contentRow: {
         flex: 1,
@@ -94,7 +93,6 @@ const styles = StyleSheet.create({
         width: 42,
         height: 42,
         borderRadius: 6,
-        backgroundColor: '#333',
     },
     info: {
         flex: 1,
@@ -102,13 +100,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     title: {
-        color: COLORS.white,
         fontSize: 14,
         fontFamily: FONTS.medium,
         marginBottom: 2,
     },
     artist: {
-        color: COLORS.dark.textSecondary,
         fontSize: 12,
         fontFamily: FONTS.regular,
     },

@@ -1,29 +1,27 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Dimensions, Animated, Easing } from 'react-native';
-import { COLORS } from '../../constants/theme';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const { width } = Dimensions.get('window');
-const BAR_COUNT = 24; // Number of bars
+const BAR_COUNT = 24;
 
-// --- Individual Bar Component ---
 const Bar = ({ index, isPlaying }: { index: number; isPlaying: boolean }) => {
-    // 1. Initial Height Value (10)
+    const colors = useThemeColors();
     const animatedHeight = useRef(new Animated.Value(10)).current;
 
     useEffect(() => {
         let animation: Animated.CompositeAnimation;
 
         if (isPlaying) {
-            // 2. Create a random looping animation
-            const randomHeight = Math.random() * 40 + 15; // Random height between 15 and 55
-            const duration = Math.random() * 300 + 200;   // Random speed
+            const randomHeight = Math.random() * 40 + 15;
+            const duration = Math.random() * 300 + 200;
 
             const bounce = Animated.sequence([
                 Animated.timing(animatedHeight, {
                     toValue: randomHeight,
                     duration: duration,
                     easing: Easing.linear,
-                    useNativeDriver: false, // Height layout changes need JS driver
+                    useNativeDriver: false,
                 }),
                 Animated.timing(animatedHeight, {
                     toValue: 10,
@@ -33,11 +31,9 @@ const Bar = ({ index, isPlaying }: { index: number; isPlaying: boolean }) => {
                 }),
             ]);
 
-            // Loop forever
             animation = Animated.loop(bounce);
             animation.start();
         } else {
-            // 3. Reset to flat when paused
             Animated.timing(animatedHeight, {
                 toValue: 10,
                 duration: 300,
@@ -46,7 +42,6 @@ const Bar = ({ index, isPlaying }: { index: number; isPlaying: boolean }) => {
         }
 
         return () => {
-            // Cleanup: stop animation when component unmounts or pauses
             if (animation) animation.stop();
         };
     }, [isPlaying]);
@@ -56,17 +51,15 @@ const Bar = ({ index, isPlaying }: { index: number; isPlaying: boolean }) => {
             style={[
                 styles.bar,
                 {
-                    height: animatedHeight, // Bind height to animated value
+                    height: animatedHeight,
                     opacity: isPlaying ? 1 : 0.5,
-                    // Center bars get the bright Lime color, sides are gray
-                    backgroundColor: index > 8 && index < 16 ? COLORS.accent : COLORS.dark.textSecondary
+                    backgroundColor: index > 8 && index < 16 ? colors.accent : colors.textSecondary
                 },
             ]}
         />
     );
 };
 
-// --- Main Container ---
 export default function AudioVisualizer({ isPlaying }: { isPlaying: boolean }) {
     return (
         <View style={styles.container}>

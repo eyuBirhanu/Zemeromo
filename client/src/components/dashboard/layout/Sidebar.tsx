@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Music, Users, MapPin, X, Disc, Building2 } from "lucide-react";
+import { Home, Music, Users, MapPin, X, Disc, Building2, Terminal } from "lucide-react";
 import Logo from "../../ui/Logo";
 
 interface SidebarProps {
@@ -41,6 +41,13 @@ export default function Sidebar({ isOpen, onClose, userRole }: SidebarProps) {
             href: "/dashboard/users",
             allowed: ["super_admin"]
         },
+        {
+            name: "Tools",
+            icon: Terminal,
+            href: "/dashboard/tools",
+            allowed: ["super_admin"]
+        }
+
     ];
 
     return (
@@ -117,12 +124,12 @@ export default function Sidebar({ isOpen, onClose, userRole }: SidebarProps) {
                 {/* 3. Footer (Version) */}
                 <div className="p-6 border-t border-white/5">
                     <div className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl border border-white/5">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary animate-spin-slow">
-                            <Disc size={16} />
+                        <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-primary animate-spin-slow">
+                            <Disc size={16} className="text-accent" />
                         </div>
                         <div>
                             <p className="text-xs text-gray-300 font-medium">Zema System</p>
-                            <p className="text-[10px] text-gray-500">v2.0 Stable</p>
+                            <p className="text-[10px] text-gray-500">v1.0 Stable</p>
                         </div>
                     </div>
                 </div>

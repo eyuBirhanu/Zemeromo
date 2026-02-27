@@ -1,7 +1,7 @@
 import express from "express";
 import { protect, authorize } from "../middleware/auth";
-import { uploadAudio } from "../middleware/upload";
-import { identifyUser } from "../middleware/identify";
+import { upload } from "../middleware/upload"; // Import the generic upload
+import { identifyUser } from "../middleware/identify"; // or identifyUser depending on your file name
 import {
     createSong,
     getSongs,
@@ -12,25 +12,27 @@ import {
 
 const router = express.Router();
 
-// Public Routes (For App) - Use identifyUser to handle Guest vs User
+// Public Routes
 router.get("/", identifyUser, getSongs);
 router.get("/:id", identifyUser, getSongById);
 
-// Protected Routes (For Dashboard)
+// Protected Routes
 router.use(protect, authorize("church_admin", "super_admin"));
 
+// Create Song (Audio + Thumbnail)
 router.post(
     "/",
-    uploadAudio.fields([
+    upload.fields([
         { name: "audio", maxCount: 1 },
         { name: "thumbnail", maxCount: 1 }
     ]),
     createSong
 );
 
+// Update Song (Audio + Thumbnail)
 router.put(
     "/:id",
-    uploadAudio.fields([
+    upload.fields([
         { name: "audio", maxCount: 1 },
         { name: "thumbnail", maxCount: 1 }
     ]),

@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, FONTS } from '../../constants/theme';
+import { SPACING, FONTS } from '../../constants/theme';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface SettingRowProps {
     icon: any;
@@ -17,51 +18,54 @@ interface SettingRowProps {
 export default function SettingRow({
     icon, title, subtitle, onPress, type = 'link', value, onToggle, isDestructive
 }: SettingRowProps) {
+    const colors = useThemeColors();
+
     return (
         <TouchableOpacity
-            style={styles.container}
+            style={[styles.container, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
             onPress={type === 'toggle' ? () => onToggle && onToggle(!value as boolean) : onPress}
             activeOpacity={type === 'toggle' ? 1 : 0.6}
             disabled={type === 'toggle' && !onToggle}
         >
-            {/* Icon Circle - Smaller & Sleeker */}
+            {/* Icon Circle */}
             <View style={[
                 styles.iconBox,
+                { backgroundColor: colors.surfaceLight },
                 isDestructive && { backgroundColor: 'rgba(239, 68, 68, 0.1)' }
             ]}>
                 <Ionicons
                     name={icon}
-                    size={20} // Reduced from 22
-                    color={isDestructive ? '#EF4444' : COLORS.white}
+                    size={20}
+                    color={isDestructive ? '#EF4444' : colors.text}
                 />
             </View>
 
             {/* Text */}
             <View style={styles.textContainer}>
-                <Text style={[styles.title, isDestructive && { color: '#EF4444' }]}>
+                <Text style={[styles.title, { color: colors.text }, isDestructive && { color: '#EF4444' }]}>
                     {title}
                 </Text>
-                {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+                {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
             </View>
 
             {/* Trailing Element */}
             <View style={styles.trailing}>
                 {type === 'link' && (
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.dark.textSecondary} />
+                    <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                 )}
 
                 {type === 'value' && (
-                    <Text style={styles.valueText}>{value}</Text>
+                    <Text style={[styles.valueText, { color: colors.accent }]}>{value}</Text>
                 )}
 
                 {type === 'toggle' && (
                     <Switch
-                        trackColor={{ false: '#374151', true: 'rgba(212, 244, 121, 0.3)' }}
-                        thumbColor={value ? COLORS.accent : '#9CA3AF'}
+                        trackColor={{ false: '#374151', true: colors.accent }} // Lime track
+                        thumbColor={value ? '#fff' : '#9CA3AF'}
                         ios_backgroundColor="#374151"
                         onValueChange={onToggle}
                         value={value as boolean}
-                        style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }} // Make switch slightly smaller
+                        style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                     />
                 )}
             </View>
@@ -75,15 +79,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         paddingHorizontal: SPACING.m,
-        backgroundColor: COLORS.dark.surface,
-        borderBottomWidth: 1, // Real separator
-        borderBottomColor: 'rgba(255,255,255,0.03)',
+        borderBottomWidth: 1,
     },
     iconBox: {
-        width: 36,  // Reduced from 42
-        height: 36, // Reduced from 42
+        width: 36,
+        height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.05)',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 14,
@@ -93,13 +94,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     title: {
-        color: COLORS.white,
-        fontSize: 15, // Reduced from 16 for better proportion
+        fontSize: 15,
         fontFamily: FONTS.medium,
         marginBottom: 1,
     },
     subtitle: {
-        color: COLORS.dark.textSecondary,
         fontSize: 12,
         fontFamily: FONTS.regular,
     },
@@ -107,7 +106,6 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     valueText: {
-        color: COLORS.accent,
         fontSize: 13,
         fontFamily: FONTS.bold,
     }

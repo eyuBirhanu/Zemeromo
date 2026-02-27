@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSettingsStore } from '../store/settingsStore';
-import { COLORS } from '../constants/theme';
+import { useThemeColors } from '../hooks/useThemeColors'; // Theme Hook
 
 // Screens
 import TabNavigator from './TabNavigator';
@@ -16,25 +16,21 @@ import PlayerScreen from '../screens/PlayerScreen';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-    // Zustand persist stores usually have a `hasHydrated` check if using newer versions,
-    // but the simplest way is to rely on a local loading state if needed.
-    // However, Zustand usually loads very fast from AsyncStorage.
-
     const hasSeenOnboarding = useSettingsStore((state) => state.hasSeenOnboarding);
-    const [isLoaded, setIsLoaded] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+    const colors = useThemeColors(); // Get Theme Colors
 
+    // Wait for hydration (Zustand persist)
     useEffect(() => {
-        // Allow a tiny delay for storage hydration
-        const timer = setTimeout(() => {
-            setIsLoaded(true);
-        }, 100);
+        const timer = setTimeout(() => setIsReady(true), 50);
         return () => clearTimeout(timer);
     }, []);
 
-    if (!isLoaded) {
+    if (!isReady) {
+        // Theme-aware loading screen
         return (
-            <View style={{ flex: 1, backgroundColor: COLORS.dark.bg, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={COLORS.accent} />
+            <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={colors.accent} />
             </View>
         );
     }

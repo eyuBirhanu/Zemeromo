@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SPACING, FONTS } from '../../constants/theme';
+import { SPACING, FONTS } from '../../constants/theme';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
+    const colors = useThemeColors();
     const isSong = item.type === 'song' || item.type === 'Song';
 
     // Data Safeguards
@@ -29,12 +31,12 @@ export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
         <TouchableOpacity
             activeOpacity={0.9}
             onPress={onPress}
-            style={styles.container}
+            style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}
         >
             {/* Background Image */}
             <Image source={{ uri: coverImage }} style={styles.image} resizeMode="cover" />
 
-            {/* Professional Gradient: Darker at bottom for text readability */}
+            {/* Professional Gradient: Keep dark overlay for text readability */}
             <LinearGradient
                 colors={['transparent', 'rgba(15, 19, 26, 0.6)', 'rgba(15, 19, 26, 0.95)']}
                 locations={[0, 0.6, 1]}
@@ -44,7 +46,7 @@ export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
             <View style={styles.content}>
                 {/* TOP: Tags Row (Subtle & Professional) */}
                 <View style={styles.topRow}>
-                    <View style={[styles.typeBadge, { backgroundColor: isSong ? COLORS.accent : COLORS.primary }]}>
+                    <View style={[styles.typeBadge, { backgroundColor: isSong ? colors.accent : colors.primary }]}>
                         <Text style={[styles.typeText, { color: isSong ? 'black' : 'white' }]}>
                             {isSong ? 'SINGLE' : 'ALBUM'}
                         </Text>
@@ -69,7 +71,7 @@ export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
                             {artistImage ? (
                                 <Image source={{ uri: artistImage }} style={styles.artistAvatar} />
                             ) : (
-                                <View style={[styles.artistAvatar, { backgroundColor: COLORS.dark.surfaceLight }]} />
+                                <View style={[styles.artistAvatar, { backgroundColor: colors.surfaceLight }]} />
                             )}
                             <Text style={styles.artistName} numberOfLines={1}>{artistName}</Text>
                         </View>
@@ -78,18 +80,18 @@ export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
                     {/* Action Button: Distinct for Song vs Album */}
                     {isSong ? (
                         <TouchableOpacity
-                            style={styles.playBtn}
+                            style={[styles.playBtn, { backgroundColor: colors.accent }]}
                             onPress={(e) => {
                                 e.stopPropagation();
                                 onPlayPress();
                             }}
                         >
-                            <Ionicons name="play" size={20} color={COLORS.dark.bg} style={{ marginLeft: 2 }} />
+                            <Ionicons name="play" size={20} color={colors.black} style={{ marginLeft: 2 }} />
                         </TouchableOpacity>
                     ) : (
-                        <View style={styles.albumIcon}>
-                            <Ionicons name="albums-outline" size={20} color={COLORS.primary} />
-                            <Text style={styles.songCount}>{item.songCount || 0}</Text>
+                        <View style={[styles.albumIcon, { borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                            <Ionicons name="albums-outline" size={20} color={colors.primary} />
+                            <Text style={[styles.songCount, { color: colors.primary }]}>{item.songCount || 0}</Text>
                         </View>
                     )}
                 </View>
@@ -104,9 +106,7 @@ const styles = StyleSheet.create({
         height: CARD_HEIGHT,
         borderRadius: 16, // User requested: Not too circled
         marginRight: SPACING.m,
-        backgroundColor: COLORS.dark.surface,
         borderWidth: 1,
-        borderColor: COLORS.dark.border,
         overflow: 'hidden',
     },
     image: {
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255,255,255,0.1)',
     },
     tagText: {
-        color: COLORS.dark.textSecondary,
+        color: 'rgba(255,255,255,0.8)', // Kept consistent for dark bg readability
         fontSize: 10,
         fontFamily: FONTS.medium,
     },
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
         paddingRight: SPACING.s,
     },
     title: {
-        color: COLORS.white,
+        color: 'white', // Kept white because of dark gradient
         fontSize: 20, // Slightly reduced for cleaner look
         fontFamily: FONTS.bold,
         marginBottom: 6,
@@ -184,10 +184,10 @@ const styles = StyleSheet.create({
         height: 20,
         borderRadius: 10, // Perfectly circular
         borderWidth: 1,
-        borderColor: COLORS.white,
+        borderColor: 'white',
     },
     artistName: {
-        color: COLORS.dark.textSecondary,
+        color: 'rgba(255,255,255,0.8)', // Kept light for readability over gradient
         fontSize: 12,
         fontFamily: FONTS.medium,
     },
@@ -196,10 +196,8 @@ const styles = StyleSheet.create({
         width: 44, // User requested: Not too big
         height: 44,
         borderRadius: 22,
-        backgroundColor: COLORS.accent, // Lime
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: COLORS.accent,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -210,15 +208,12 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)', // Low opacity Emerald
         width: 40,
         height: 40,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(16, 185, 129, 0.3)',
     },
     songCount: {
-        color: COLORS.primary,
         fontSize: 9,
         fontFamily: FONTS.bold,
         marginTop: 2,
