@@ -26,6 +26,12 @@ export default function Navbar() {
                 <div className="hidden md:flex items-center gap-8">
                     <div className="flex items-center gap-8 text-sm font-medium text-gray-300">
                         <Link
+                            href="/about"
+                            className="hover:text-accent transition-colors duration-300 tracking-wide"
+                        >
+                            About
+                        </Link>
+                        <Link
                             href="#features"
                             className="hover:text-accent transition-colors duration-300 tracking-wide"
                         >

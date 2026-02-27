@@ -48,12 +48,21 @@ export default function Footer() {
 
                     {/* Combined Privacy & Terms */}
                     <Link
+                        href="/about"
+                        className="group flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-300 transition-colors"
+                    >
+                        <span>About</span>
+                        <ExternalLink size={10} className="opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300" />
+                    </Link>
+
+                    <Link
                         href="/legal"
                         className="group flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-300 transition-colors"
                     >
                         <span>Privacy & Terms</span>
                         <ExternalLink size={10} className="opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300" />
                     </Link>
+
                 </div>
 
             </div>
