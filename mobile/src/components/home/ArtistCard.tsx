@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { SPACING, FONTS } from '../../constants/theme';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
@@ -19,15 +19,27 @@ interface Props {
 
 export default function ArtistCard({ artist, onPress }: Props) {
     const colors = useThemeColors();
+    const [imageError, setImageError] = useState(false);
 
     return (
         <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
-            {/* Image Container with subtle border */}
-            <View style={[styles.imageContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Image
-                    source={{ uri: artist.image || 'https://via.placeholder.com/150' }}
-                    style={styles.image}
-                />
+            {/* Image Container */}
+            <View style={[
+                styles.imageContainer,
+                { backgroundColor: colors.surfaceLight, borderColor: colors.border }
+            ]}>
+                {!imageError && artist.image ? (
+                    <Image
+                        source={{ uri: artist.image }}
+                        style={styles.image}
+                        onError={() => setImageError(true)}
+                    />
+                ) : (
+                    // Fallback Icon if image fails or is missing
+                    <View style={styles.fallback}>
+                        <Feather name="mic" size={40} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                    </View>
+                )}
             </View>
 
             {/* Info */}
@@ -38,7 +50,7 @@ export default function ArtistCard({ artist, onPress }: Props) {
                     {artist.churchName}
                 </Text>
 
-                {/* Subtle Album Counter */}
+                {/* Album Counter */}
                 {artist.albumCount > 0 && (
                     <View style={styles.statsRow}>
                         <Ionicons name="disc-outline" size={10} color={colors.primary} />
@@ -52,13 +64,13 @@ export default function ArtistCard({ artist, onPress }: Props) {
 
 const styles = StyleSheet.create({
     container: {
-        width: 130, // Clean width
+        width: 130,
         marginRight: SPACING.m,
     },
     imageContainer: {
         width: 130,
         height: 130,
-        borderRadius: 16, // Matches Featured Card radius
+        borderRadius: 16,
         overflow: 'hidden',
         marginBottom: SPACING.s,
         borderWidth: 1,
@@ -67,8 +79,13 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+    fallback: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     info: {
-        alignItems: 'flex-start', // Align text left for modern look
+        alignItems: 'flex-start',
         paddingHorizontal: 4,
     },
     name: {

@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import {
     View, Text, Image, TouchableOpacity, StyleSheet, ScrollView,
-    StatusBar, ActivityIndicator, LayoutAnimation, Platform, UIManager
+    StatusBar, ActivityIndicator, LayoutAnimation, Platform, UIManager, Share
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
 
 import api from '../lib/api';
 import { SPACING, FONTS } from '../constants/theme';
 import { useThemeColors } from '../hooks/useThemeColors'; // Theme Hook
+import { useFavorites } from '../hooks/useFavorites'; // Local Storage Favorites Hook
 import SongRow from '../components/shared/SongRow';
 import { Artist, Album, Song } from '../types/api';
 import { usePlayerStore } from '../store/playerStore';
+import { useFavoritesStore } from '../store/favoritesStore';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -53,6 +55,9 @@ export default function ArtistDetailScreen() {
     const { playSongList, currentSong, isPlaying, pauseSound, resumeSound } = usePlayerStore();
 
     const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
+    const [imageError, setImageError] = useState(false);
+    const { toggleFavorite, checkIsFavorite } = useFavoritesStore();
+    const isFavorite = checkIsFavorite(id);
 
     const { data: artist, isLoading, isError } = useQuery({
         queryKey: ['artist', id],
@@ -74,6 +79,23 @@ export default function ArtistDetailScreen() {
         }
     };
 
+    const handleShare = async () => {
+        if (!artist) return;
+        try {
+            await Share.share({
+                message: `Listen to ${artist.name} on Zemeromo! \n\nhttps://zemeromo.com/artist/${id}`,
+                title: `Share ${artist.name}`
+            });
+        } catch (error) { console.log(error); }
+    };
+
+    const goToChurch = () => {
+        const churchId = artist?.churchId?._id || artist?.churchId;
+        if (churchId) {
+            navigation.navigate('ChurchDetail', { id: churchId });
+        }
+    };
+
     if (isLoading) {
         return (
             <View style={[styles.center, { backgroundColor: colors.bg }]}>
@@ -87,6 +109,9 @@ export default function ArtistDetailScreen() {
         return (
             <View style={[styles.center, { backgroundColor: colors.bg }]}>
                 <Text style={{ color: colors.textSecondary }}>Artist not found</Text>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+                    <Text style={{ color: colors.primary, fontFamily: FONTS.bold }}>Go Back</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -99,12 +124,32 @@ export default function ArtistDetailScreen() {
 
                 {/* --- HEADER --- */}
                 <View style={styles.headerContainer}>
-                    <Image
-                        source={{ uri: artist.imageUrl || 'https://via.placeholder.com/400' }}
-                        style={styles.headerImage}
-                    />
+                    {!imageError && artist.imageUrl ? (
+                        <Image
+                            source={{ uri: artist.imageUrl }}
+                            style={styles.headerImage}
+                            onError={() => setImageError(true)}
+                        />
+                    ) : (
+                        // Fallback Gradient if image fails
+                        <LinearGradient
+                            colors={[colors.primary, '#000']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.headerImage}
+                        />
+                    )}
+
+                    {/* Top gradient so the white back button is always visible */}
                     <LinearGradient
-                        colors={['transparent', colors.bg]}
+                        colors={['rgba(0,0,0,0.5)', 'transparent']}
+                        style={styles.topGradient}
+                    />
+
+                    {/* Bottom gradient blending smoothly into the background theme */}
+                    <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.3)', colors.bg]}
+                        locations={[0, 0.6, 1]}
                         style={styles.gradient}
                     />
 
@@ -112,30 +157,45 @@ export default function ArtistDetailScreen() {
                         <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
                             <Ionicons name="chevron-back" size={24} color="white" />
                         </TouchableOpacity>
+                        <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
+                            <Ionicons name="ellipsis-horizontal" size={24} color="white" />
+                        </TouchableOpacity>
                     </View>
 
                     <View style={styles.headerContent}>
-                        <Text style={[styles.name, { color: colors.text }]}>{artist.name}</Text>
-                        <View style={[styles.churchBadge, { backgroundColor: colors.surface }]}>
-                            <Ionicons name="home-outline" size={14} color={colors.textSecondary} />
+                        <Text style={[styles.name, { color: "#fff" }]}>{artist.name}</Text>
+
+                        {/* Clickable Church Badge */}
+                        <TouchableOpacity
+                            onPress={goToChurch}
+                            activeOpacity={0.8}
+                            style={[styles.churchBadge, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
+                        >
+                            <MaterialCommunityIcons name="church" size={14} color={colors.textSecondary} />
                             <Text style={[styles.churchText, { color: colors.textSecondary }]}>
                                 {artist.churchId?.name || "Independent"}
                             </Text>
+                            <Ionicons name="chevron-forward" size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                        </TouchableOpacity>
+
+                        {/* Action Bar (Favorites & Share) */}
+                        <View style={styles.actionBar}>
+                            <TouchableOpacity onPress={() => toggleFavorite(artist, 'Artist')} style={styles.actionBtn}>
+                                <Ionicons
+                                    name={isFavorite ? "heart" : "heart-outline"}
+                                    size={28}
+                                    color={isFavorite ? colors.primary : colors.text}
+                                />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleShare} style={styles.actionBtn}>
+                                <Ionicons name="share-social-outline" size={26} color={colors.text} />
+                            </TouchableOpacity>
                         </View>
-                        {artist.tags && (
-                            <View style={styles.tagRow}>
-                                {artist.tags.slice(0, 3).map((tag, i) => (
-                                    <View key={i} style={[styles.tag, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                                        <Text style={[styles.tagText, { color: colors.text }]}>{tag}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
                     </View>
                 </View>
 
                 {/* --- STATS --- */}
-                <View style={[styles.statsContainer, { borderBottomColor: colors.border }]}>
+                <View style={[styles.statsContainer, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
                     <View style={styles.statItem}>
                         <Text style={[styles.statNum, { color: colors.text }]}>{artist.stats?.albumsCount || 0}</Text>
                         <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Albums</Text>
@@ -168,8 +228,9 @@ export default function ArtistDetailScreen() {
 
                     {artist.albums.length === 0 ? (
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="disc-outline" size={40} color={colors.textSecondary} style={{ opacity: 0.5 }} />
-                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No albums released yet.</Text>
+                            <Ionicons name="disc-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                            <Text style={[styles.emptyTitle, { color: colors.text }]}>No albums yet</Text>
+                            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>This artist hasn't released any albums on Zemeromo yet.</Text>
                         </View>
                     ) : (
                         artist.albums.map((album) => {
@@ -205,9 +266,10 @@ export default function ArtistDetailScreen() {
                                                         artist={song.artistId?.name || artist.name}
                                                         coverImage={song.thumbnailUrl || album.coverImageUrl}
                                                         duration={song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : undefined}
+                                                        audioUrl={song.audioUrl} // Enables Play Button Logic
                                                         isPlaying={isPlaying && currentSong?._id === song._id}
-                                                        onPress={() => handlePlayPause(song, album.songs, idx)}
-                                                        onLyricsPress={() => navigation.navigate('SongDetail', { id: song._id, song })}
+                                                        onPress={() => navigation.navigate('SongDetail', { id: song._id, song })}
+                                                        onPlayPress={() => handlePlayPause(song, album.songs, idx)}
                                                     />
                                                 ))
                                             )}
@@ -229,30 +291,37 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     headerContainer: { height: 380, position: 'relative', justifyContent: 'flex-end' },
     headerImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', resizeMode: 'cover' },
+    topGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 100 },
     gradient: { ...StyleSheet.absoluteFillObject, top: '20%' },
-    navBar: { position: 'absolute', top: 50, left: 0, paddingHorizontal: SPACING.m, zIndex: 10 },
+    navBar: { position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: SPACING.m, zIndex: 10 },
     iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
     headerContent: { padding: SPACING.l, alignItems: 'center' },
-    name: { fontSize: 32, fontFamily: FONTS.bold, textAlign: 'center', marginBottom: 4 },
-    churchBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 100 },
-    churchText: { fontSize: 14, fontFamily: FONTS.medium },
-    tagRow: { flexDirection: 'row', gap: 8 },
+    name: { fontSize: 32, fontFamily: FONTS.bold, textAlign: 'center', marginBottom: 8, letterSpacing: -0.5 },
+
+    churchBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 100 },
+    churchText: { fontSize: 13, fontFamily: FONTS.medium },
+
+    actionBar: { flexDirection: 'row', alignItems: 'center', gap: 24, marginTop: 4 },
+    actionBtn: { padding: 4 },
+
+    tagRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
     tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
     tagText: { fontSize: 12, fontFamily: FONTS.medium },
 
-    statsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: SPACING.l, borderBottomWidth: 1, marginBottom: SPACING.l },
-    statItem: { alignItems: 'center', paddingHorizontal: SPACING.xl },
-    statNum: { fontSize: 18, fontFamily: FONTS.bold },
-    statLabel: { fontSize: 12, fontFamily: FONTS.regular, marginTop: 2 },
-    statDivider: { width: 1, height: 24 },
+    statsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: SPACING.l, borderBottomWidth: 1, borderTopWidth: 1, marginBottom: SPACING.l, marginHorizontal: SPACING.m },
+    statItem: { alignItems: 'center', width: '30%' },
+    statNum: { fontSize: 20, fontFamily: FONTS.bold },
+    statLabel: { fontSize: 11, fontFamily: FONTS.regular, marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 },
+    statDivider: { width: 1, height: 30, alignSelf: 'center' },
 
     section: { paddingHorizontal: SPACING.m, marginBottom: SPACING.l },
     sectionTitle: { fontSize: 20, fontFamily: FONTS.bold, marginBottom: SPACING.m },
     bioText: { fontSize: 14, lineHeight: 22, fontFamily: FONTS.regular },
 
-    // Empty
-    emptyContainer: { alignItems: 'center', padding: 20, gap: 10 },
-    emptyText: { fontStyle: 'italic' },
+    // Empty States
+    emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingTop: 20, paddingHorizontal: 40 },
+    emptyTitle: { fontSize: 18, fontFamily: FONTS.bold, marginTop: 16, marginBottom: 8 },
+    emptySub: { textAlign: 'center', fontSize: 14, fontFamily: FONTS.regular, lineHeight: 20 },
     emptyTextSmall: { fontSize: 13, padding: 16, textAlign: 'center' },
 
     // Accordion

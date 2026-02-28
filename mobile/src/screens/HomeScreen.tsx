@@ -19,10 +19,10 @@ import { Album, Artist, Song } from '../types/api';
 
 const fetchHomeData = async () => {
     const [featAlbumsRes, featSongsRes, artistsRes, freshSongsRes] = await Promise.all([
-        api.get('/albums?isFeatured=true&limit=5'),
-        api.get('/songs?isFeatured=true&limit=5'),
-        api.get('/artists?limit=5'),
-        api.get('/songs?limit=15&sort=-createdAt')
+        api.get('/albums?isFeatured=true&limit=20'),
+        api.get('/songs?isFeatured=true&limit=20'),
+        api.get('/artists?limit=20'),
+        api.get('/songs?limit=25&sort=-createdAt')
     ]);
 
     const albums = (featAlbumsRes.data.data as Album[]).map(item => ({
@@ -190,12 +190,17 @@ export default function HomeScreen() {
                     <SongRow
                         title={item.title}
                         artist={item.artistId?.name || "Unknown"}
-                        albumName={item.albumId?.title}
+                        // albumName={item.albumId?.title} // Good to keep
                         coverImage={item.thumbnailUrl || item.albumId?.coverImageUrl || ""}
                         duration={item.duration ? `${Math.floor(item.duration / 60)}:${(item.duration % 60).toString().padStart(2, '0')}` : undefined}
+
+                        audioUrl={item.audioUrl}
+
                         isPlaying={isPlaying && currentSong?._id === item._id}
-                        onPress={() => handlePlayPause(item)}
-                        onLyricsPress={() => goToSongDetail(item)}
+
+                        onPress={() => goToSongDetail(item)}
+
+                        onPlayPress={() => handlePlayPause(item)}
                     />
                 )}
                 contentContainerStyle={{ paddingBottom: 120 }}

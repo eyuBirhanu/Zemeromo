@@ -20,8 +20,9 @@ export default function SearchResultRow({ item, onPress, onPlayPress }: SearchRe
     const isAlbum = type === 'Album';
     const isSong = type === 'Song';
 
-    // --- CHECK AUDIO ---
-    const hasAudio = isSong && item.audioUrl && item.audioUrl.trim().length > 0;
+    // --- CHECK AUDIO AVAILABILITY ---
+    // Safely check if audioUrl exists and is not empty
+    const hasAudio = isSong && item.audioUrl && typeof item.audioUrl === 'string' && item.audioUrl.trim().length > 0;
 
     const imageUri = item.image || item.imageUrl || item.coverImageUrl || item.thumbnailUrl;
 
@@ -50,7 +51,13 @@ export default function SearchResultRow({ item, onPress, onPlayPress }: SearchRe
             onPress={() => onPress(item)}
             activeOpacity={0.7}
         >
-            <View style={[styles.imageContainer, isArtist && styles.roundImage, isChurch && styles.churchImage, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* LEFT: IMAGE */}
+            <View style={[
+                styles.imageContainer,
+                isArtist && styles.roundImage,
+                isChurch && styles.churchImage,
+                { backgroundColor: colors.surface, borderColor: colors.border }
+            ]}>
                 {imageUri ? (
                     <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
                 ) : (
@@ -63,14 +70,22 @@ export default function SearchResultRow({ item, onPress, onPlayPress }: SearchRe
                 )}
             </View>
 
+            {/* MIDDLE: INFO */}
             <View style={styles.info}>
                 <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
                     {item.title || item.name}
                 </Text>
+
                 <View style={styles.metaRow}>
-                    <Text style={[styles.typeText, isChurch ? { color: '#60A5FA' } : isArtist ? { color: '#F472B6' } : { color: colors.primary }]}>
+                    <Text style={[
+                        styles.typeText,
+                        isChurch ? { color: '#60A5FA' } :
+                            isArtist ? { color: '#F472B6' } :
+                                { color: colors.primary }
+                    ]}>
                         {type.toUpperCase()}
                     </Text>
+
                     <Text style={[styles.dot, { color: colors.textSecondary }]}> • </Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
                         {getSubtitle()}
@@ -78,17 +93,26 @@ export default function SearchResultRow({ item, onPress, onPlayPress }: SearchRe
                 </View>
             </View>
 
+            {/* RIGHT: ACTION */}
             <View style={styles.action}>
-                {/* Logic: If it is a song AND has Audio -> Show Play. Otherwise -> Show Chevron. */}
-                {isSong && hasAudio ? (
-                    <TouchableOpacity
-                        onPress={(e) => { e.stopPropagation(); onPlayPress(item); }}
-                        style={[styles.playBtn, { backgroundColor: colors.accent }]}
-                        hitSlop={10}
-                    >
-                        <Ionicons name="play" size={16} color={colors.black} style={{ marginLeft: 2 }} />
-                    </TouchableOpacity>
+                {isSong ? (
+                    hasAudio ? (
+                        // CASE 1: Song WITH Audio -> Show Play Button
+                        <TouchableOpacity
+                            onPress={(e) => { e.stopPropagation(); onPlayPress(item); }}
+                            style={[styles.playBtn, { backgroundColor: colors.accent }]}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Ionicons name="play" size={16} color={colors.black} style={{ marginLeft: 2 }} />
+                        </TouchableOpacity>
+                    ) : (
+                        // CASE 2: Song WITHOUT Audio -> Show Script Icon (Lyrics only)
+                        <View style={styles.iconWrapper}>
+                            <MaterialCommunityIcons name="script-text-outline" size={20} color={colors.textSecondary} />
+                        </View>
+                    )
                 ) : (
+                    // CASE 3: Not a Song (Artist/Album) -> Show Chevron
                     <Ionicons name="chevron-forward" size={18} color={colors.border} />
                 )}
             </View>
@@ -109,6 +133,7 @@ const styles = StyleSheet.create({
     typeText: { fontSize: 10, fontFamily: FONTS.bold, letterSpacing: 0.5 },
     dot: { fontSize: 10, marginHorizontal: 2 },
     subtitle: { fontSize: 12, fontFamily: FONTS.regular, maxWidth: '85%' },
-    action: { marginLeft: 12, justifyContent: 'center', alignItems: 'center' },
-    playBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 }
+    action: { marginLeft: 12, justifyContent: 'center', alignItems: 'center', minWidth: 40 },
+    playBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 },
+    iconWrapper: { alignItems: 'center', justifyContent: 'center' }
 });

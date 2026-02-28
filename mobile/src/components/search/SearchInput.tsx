@@ -19,12 +19,12 @@ export default function SearchInput({ value, onChangeText, placeholder, autoFocu
         <View style={[
             styles.container,
             { backgroundColor: colors.surface, borderColor: colors.border },
-            isFocused && { borderColor: colors.accent, backgroundColor: colors.isDark ? 'rgba(212, 244, 121, 0.05)' : 'rgba(16, 185, 129, 0.05)' }
+            isFocused && { borderColor: colors.primary, backgroundColor: colors.isDark ? 'rgba(212, 244, 121, 0.05)' : 'rgba(16, 185, 129, 0.05)' }
         ]}>
             <Ionicons
                 name="search"
                 size={20}
-                color={isFocused ? colors.accent : colors.textSecondary}
+                color={isFocused ? colors.primary : colors.textSecondary}
                 style={styles.icon}
             />
 

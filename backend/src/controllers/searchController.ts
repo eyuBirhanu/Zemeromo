@@ -5,13 +5,12 @@ import Artist from "../models/Artist";
 import Church from "../models/Church";
 
 /**
- * @desc    Global Search (Songs, Artists, Albums, Churches)
- * @route   GET /api/search?q=keyword
- * @access  Public
+ * @desc    Global Search
+ * @route   GET /api/search?q=keyword&type=song|artist|album|church|all
  */
 export const searchContent = async (req: Request, res: Response) => {
     try {
-        const { q } = req.query;
+        const { q, type } = req.query;
 
         // 1. Validation
         if (!q || typeof q !== 'string') {
@@ -19,84 +18,98 @@ export const searchContent = async (req: Request, res: Response) => {
         }
 
         const keyword = q.trim();
+        // Allow 1 char searches? Maybe too heavy. Let's keep 2.
         if (keyword.length < 2) {
-            return res.status(400).json({ success: false, message: "Search term must be at least 2 characters" });
+            return res.status(200).json({ success: true, data: [] }); // Return empty list instead of error for UI
         }
 
-        // 2. Create Regex (Case insensitive, partial match)
-        // We escape special characters to prevent regex errors
+        // 2. Setup Regex
         const safeKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(safeKeyword, 'i');
 
-        // 3. Execute Searches in Parallel (Fastest way)
-        const [songs, albums, artists, churches] = await Promise.all([
+        // Normalize type input
+        const filterType = (type as string)?.toLowerCase() || 'all';
 
-            // A. Search Songs (Title, Lyrics, Tags)
-            Song.find({
-                $or: [
-                    { title: regex },
-                    { lyrics: regex },
-                    { tags: regex },
-                    { "credits.writer": regex } // Even search writer name
-                ],
-                isDeleted: false,
-                status: "active"
-            })
-                .populate("artistId", "name imageUrl") // Needed for UI cards
-                .select("title duration audioUrl thumbnailUrl lyrics")
-                .limit(10),
+        // 3. Conditional Searching
+        let results: any[] = [];
+        const limit = 10; // Limit per category
 
-            // B. Search Albums (Title, Genre, Tags)
-            Album.find({
-                $or: [
-                    { title: regex },
-                    { tags: regex },
-                    { genre: regex }
-                ],
-                isDeleted: false,
-                isPublished: true
-            })
-                .populate("artistId", "name")
-                .select("title coverImageUrl releaseYear")
-                .limit(10),
+        const promises = [];
 
-            // C. Search Artists (Name, Tags)
-            Artist.find({
-                $or: [
-                    { name: regex },
-                    { tags: regex }
-                ],
-                isDeleted: false,
-                isActive: true
-            })
-                .select("name imageUrl isGroup")
-                .limit(10),
+        // --- SEARCH SONGS ---
+        if (filterType === 'all' || filterType === 'song') {
+            promises.push(
+                Song.find({
+                    $or: [{ title: regex }, { lyrics: regex }, { tags: regex }],
+                    isDeleted: false,
+                    status: "active"
+                })
+                    .populate("artistId", "name imageUrl")
+                    .select("title duration audioUrl thumbnailUrl lyrics artistId")
+                    .limit(limit)
+                    .lean() // Converts to plain JS object so we can add 'type'
+                    .then(items => items.map(i => ({ ...i, type: 'Song' })))
+            );
+        }
 
-            // D. Search Churches (Name, Location, Denomination)
-            Church.find({
-                $or: [
-                    { name: regex },
-                    { "address.city": regex },
-                    { "address.subCity": regex },
-                    { denomination: regex }
-                ],
-                status: "verified"
-            })
-                .select("name logoUrl address denomination")
-                .limit(5)
-        ]);
+        // --- SEARCH ARTISTS ---
+        if (filterType === 'all' || filterType === 'artist') {
+            promises.push(
+                Artist.find({
+                    $or: [{ name: regex }, { tags: regex }],
+                    isDeleted: false,
+                    isActive: true
+                })
+                    .select("name imageUrl isGroup churchId")
+                    .populate("churchId", "name")
+                    .limit(limit)
+                    .lean()
+                    .then(items => items.map(i => ({ ...i, type: 'Artist' })))
+            );
+        }
 
-        // 4. Return Structured Response
-        res.json({
-            success: true,
-            data: {
-                songs,
-                albums,
-                artists,
-                churches,
-                totalResults: songs.length + albums.length + artists.length + churches.length
-            }
-        });
+        // --- SEARCH ALBUMS ---
+        if (filterType === 'all' || filterType === 'album') {
+            promises.push(
+                Album.find({
+                    $or: [{ title: regex }, { tags: regex }],
+                    isDeleted: false,
+                    isPublished: true
+                })
+                    .populate("artistId", "name")
+                    .select("title coverImageUrl releaseYear artistId")
+                    .limit(limit)
+                    .lean()
+                    .then(items => items.map(i => ({ ...i, type: 'Album' })))
+            );
+        }
+
+        // --- SEARCH CHURCHES ---
+        if (filterType === 'all' || filterType === 'church') {
+            promises.push(
+                Church.find({
+                    $or: [{ name: regex }, { "address.city": regex }],
+                    status: "verified"
+                })
+                    .select("name logoUrl address denomination")
+                    .limit(limit)
+                    .lean()
+                    .then(items => items.map(i => ({ ...i, type: 'Church' })))
+            );
+        }
+
+        // 4. Await all selected queries
+        const resultsArray = await Promise.all(promises);
+
+        // 5. Flatten the array of arrays into one single list
+        results = resultsArray.flat();
+
+        // Optional: Shuffle if 'all' to make it look organic
+        if (filterType === 'all') {
+            results.sort(() => Math.random() - 0.5);
+        }
+
+        res.json({ success: true, data: results });
 
     } catch (error) {
         console.error("Search Error:", error);

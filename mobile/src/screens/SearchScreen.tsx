@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, StatusBar, Text, Keyboard } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, FlatList, StyleSheet, StatusBar, Text, Keyboard, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ import FilterPills from '../components/search/FilterPills';
 import SearchResultRow from '../components/search/SearchResultRow';
 import { SPACING, FONTS } from '../constants/theme';
 import { usePlayerStore } from '../store/playerStore';
-import { useThemeColors } from '../hooks/useThemeColors'; // THEME HOOK
+import { useThemeColors } from '../hooks/useThemeColors';
 
 function useDebounce(value: string, delay: number) {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -32,38 +32,90 @@ export default function SearchScreen() {
     const [activeCategory, setActiveCategory] = useState(route.params?.type || "All");
     const debouncedSearch = useDebounce(searchText, 500);
 
+    // --- MAIN FETCH FUNCTION ---
     const fetchExploreData = async () => {
+        // CASE A: ACTIVE SEARCH (User typing)
         if (debouncedSearch.length > 0) {
             const params: any = { q: debouncedSearch };
             if (activeCategory !== "All") params.type = activeCategory.toLowerCase();
+
             const res = await api.get('/search', { params });
             return res.data.data || [];
         }
 
-        let endpoint = '/songs?limit=20&sort=-createdAt';
-        let typeLabel = 'Song';
+        // CASE B: BROWSE MODE (Empty search)
+        // FIX: Explicitly type this array to avoid TS error
+        let results: any[] = [];
 
-        if (activeCategory === 'Artist') { endpoint = '/artists?limit=20'; typeLabel = 'Artist'; }
-        else if (activeCategory === 'Album') { endpoint = '/albums?limit=20'; typeLabel = 'Album'; }
-        else if (activeCategory === 'Church') { endpoint = '/churches?limit=20'; typeLabel = 'Church'; }
+        // 1. If "All" or "Song", fetch songs
+        if (activeCategory === "All" || activeCategory === "Song") {
+            try {
+                const res = await api.get('/songs?limit=20&sort=-createdAt');
+                const songs = (res.data.data || []).map((item: any) => ({ ...item, type: 'Song' }));
+                results = [...results, ...songs];
+            } catch (e) { console.log('Error fetching songs', e); }
+        }
 
-        const res = await api.get(endpoint);
-        return (res.data.data || []).map((item: any) => ({ ...item, type: typeLabel }));
+        // 2. If "All" or "Artist", fetch artists
+        if (activeCategory === "All" || activeCategory === "Artist") {
+            try {
+                const res = await api.get('/artists?limit=20');
+                const artists = (res.data.data || []).map((item: any) => ({ ...item, type: 'Artist' }));
+                results = [...results, ...artists];
+            } catch (e) { console.log('Error fetching artists', e); }
+        }
+
+        // 3. If "All" or "Album", fetch albums
+        if (activeCategory === "All" || activeCategory === "Album") {
+            try {
+                const res = await api.get('/albums?limit=20');
+                const albums = (res.data.data || []).map((item: any) => ({ ...item, type: 'Album' }));
+                results = [...results, ...albums];
+            } catch (e) { console.log('Error fetching albums', e); }
+        }
+
+        // 4. If "All" or "Church", fetch churches
+        if (activeCategory === "All" || activeCategory === "Church") {
+            try {
+                const res = await api.get('/churches?limit=20');
+                const churches = (res.data.data || []).map((item: any) => ({ ...item, type: 'Church' }));
+                results = [...results, ...churches];
+            } catch (e) { console.log('Error fetching churches', e); }
+        }
+
+        // Shuffle results if "All"
+        if (activeCategory === "All") {
+            return results.sort(() => Math.random() - 0.5);
+        }
+
+        return results;
     };
 
-    const { data: results = [], isLoading } = useQuery({
+    const { data: results = [], isLoading, refetch, isRefetching } = useQuery({
         queryKey: ['explore', debouncedSearch, activeCategory],
         queryFn: fetchExploreData,
         staleTime: 1000 * 60 * 5,
     });
 
+    const onRefresh = useCallback(() => {
+        refetch();
+    }, [refetch]);
+
     const handleItemPress = (item: any) => {
         Keyboard.dismiss();
-        const type = item.type || 'Song';
-        if (type === 'Artist') navigation.navigate('ArtistDetail', { id: item._id });
-        else if (type === 'Album') navigation.navigate('AlbumDetail', { id: item._id });
-        else if (type === 'Church') navigation.navigate('ChurchDetail', { id: item._id });
-        else if (type === 'Song') navigation.navigate('SongDetail', { id: item._id, title: item.title, artist: item.artistId });
+
+        const type = (item.type || 'Song').toLowerCase();
+
+        if (type === 'artist') navigation.navigate('ArtistDetail', { id: item._id });
+        else if (type === 'album') navigation.navigate('AlbumDetail', { id: item._id });
+        else if (type === 'church') navigation.navigate('ChurchDetail', { id: item._id });
+        else if (type === 'song') {
+            navigation.navigate('SongDetail', {
+                id: item._id,
+                title: item.title,
+                artist: item.artistId
+            });
+        }
     };
 
     const handlePlayPress = (item: any) => {
@@ -114,7 +166,7 @@ export default function SearchScreen() {
 
             <FilterPills activeFilter={activeCategory} onSelect={setActiveCategory} />
 
-            {isLoading ? (
+            {isLoading && !isRefetching ? (
                 <View style={{ paddingHorizontal: SPACING.m }}>{renderSkeleton()}</View>
             ) : (
                 <FlatList
@@ -127,6 +179,15 @@ export default function SearchScreen() {
                     ListEmptyComponent={renderEmpty}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isRefetching}
+                            onRefresh={onRefresh}
+                            tintColor={colors.accent}
+                            colors={[colors.accent]}
+                        />
+                    }
                 />
             )}
         </SafeAreaView>

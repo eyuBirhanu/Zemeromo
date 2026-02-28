@@ -9,12 +9,15 @@ import { SPACING, FONTS } from '../constants/theme';
 import SettingRow from '../components/profile/SettingRow';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useThemeStore } from '../store/themeStore';
+import { useSettingsStore } from '../store/settingsStore';
 
 const PLAY_STORE_LINK = "https://play.google.com/store/apps/details?id=com.eyubirhanu.zemeromo";
 const WEBSITE_URL = "https://zemeromo.com";
 
 export default function ProfileScreen() {
     const navigation = useNavigation();
+    const { resetOnboarding } = useSettingsStore();
+
 
     // --- HOOKS FOR THEME ---
     const colors = useThemeColors();
@@ -87,8 +90,8 @@ export default function ProfileScreen() {
                         <Switch
                             value={isDarkMode}
                             onValueChange={toggleTheme}
-                            trackColor={{ false: '#d1d5db', true: colors.accent }}
-                            thumbColor={isDarkMode ? '#1a1f2b' : '#fff'}
+                            trackColor={{ false: '#d1d5db', true: colors.primary }}
+                            thumbColor={isDarkMode ? '#fff' : '#fff'}
                         />
                     </View>
                 </View>
@@ -112,6 +115,16 @@ export default function ProfileScreen() {
                         title="Terms of Service"
                         onPress={() => openInAppBrowser(`${WEBSITE_URL}/terms`)}
                     />
+                    <TouchableOpacity
+                        onPress={() => {
+                            resetOnboarding();
+                            alert("Onboarding reset! Restart the app to see it.");
+                        }}
+                        style={{ padding: 16, backgroundColor: 'red', borderRadius: 8, marginTop: 10 }}
+                    >
+                        <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold' }}>Reset Onboarding (Test)</Text>
+                    </TouchableOpacity>
+
                 </View>
 
                 {/* --- COMMUNITY --- */}

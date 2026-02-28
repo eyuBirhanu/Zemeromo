@@ -1,45 +1,71 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SPACING, FONTS } from '../../constants/theme';
-import { useThemeColors } from '../../hooks/useThemeColors'; // Theme Hook
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface SongRowProps {
     title: string;
     artist: string;
     coverImage: string;
     duration?: string;
-    onRowPress: () => void;
-    onPlayPause: () => void;
+    audioUrl?: string;
+    onPress: () => void;
+    onPlayPress: () => void;
     onMorePress?: () => void;
     isPlaying?: boolean;
 }
 
 export default function SongRow({
-    title, artist, coverImage, duration, onRowPress, onPlayPause, onMorePress, isPlaying
+    title,
+    artist,
+    coverImage,
+    duration,
+    audioUrl,
+    onPress,
+    onPlayPress,
+    onMorePress,
+    isPlaying
 }: SongRowProps) {
-    const colors = useThemeColors(); // Get dynamic colors
+    const colors = useThemeColors();
+    const [imageError, setImageError] = useState(false);
+
+    // Check if audio exists
+    const hasAudio = audioUrl && audioUrl.trim().length > 0;
 
     return (
         <TouchableOpacity
             style={[
                 styles.container,
-                { borderBottomColor: colors.border }, // Dynamic Border
-                isPlaying && { backgroundColor: colors.isDark ? 'rgba(212, 244, 121, 0.05)' : 'rgba(16, 185, 129, 0.05)' } // Dynamic Tint
+                { borderBottomColor: colors.border },
+                isPlaying && { backgroundColor: colors.isDark ? 'rgba(212, 244, 121, 0.05)' : 'rgba(16, 185, 129, 0.05)' }
             ]}
-            onPress={onRowPress}
+            onPress={onPress}
             activeOpacity={0.7}
         >
-            {/* Image Section */}
+            {/* 1. Image Section */}
             <View style={styles.imageContainer}>
-                <Image
-                    source={{ uri: coverImage || 'https://via.placeholder.com/100' }}
-                    style={[
+                {!imageError && coverImage ? (
+                    <Image
+                        source={{ uri: coverImage }}
+                        style={[
+                            styles.image,
+                            { backgroundColor: colors.surfaceLight },
+                            isPlaying && { borderWidth: 1.5, borderColor: colors.accent }
+                        ]}
+                        onError={() => setImageError(true)}
+                    />
+                ) : (
+                    // Fallback Icon (Music Note)
+                    <View style={[
                         styles.image,
+                        styles.fallback,
                         { backgroundColor: colors.surfaceLight },
                         isPlaying && { borderWidth: 1.5, borderColor: colors.accent }
-                    ]}
-                />
+                    ]}>
+                        <Ionicons name="musical-note" size={20} color={colors.textSecondary} />
+                    </View>
+                )}
 
                 {/* Playing Overlay Icon */}
                 {isPlaying && (
@@ -49,7 +75,7 @@ export default function SongRow({
                 )}
             </View>
 
-            {/* Info Section */}
+            {/* 2. Info Section */}
             <View style={styles.info}>
                 <Text
                     style={[
@@ -73,22 +99,32 @@ export default function SongRow({
                 </View>
             </View>
 
-            {/* Actions Section */}
+            {/* 3. Actions Section */}
             <View style={styles.actions}>
-                <TouchableOpacity
-                    onPress={(e) => {
-                        e.stopPropagation();
-                        onPlayPause();
-                    }}
-                    style={styles.playBtn}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <Ionicons
-                        name={isPlaying ? "pause" : "play-circle"}
-                        size={28}
-                        color={isPlaying ? colors.accent : colors.textSecondary}
-                    />
-                </TouchableOpacity>
+                {hasAudio ? (
+                    <TouchableOpacity
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onPlayPress();
+                        }}
+                        style={styles.playBtn}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons
+                            name={isPlaying ? "pause" : "play-circle"}
+                            size={32}
+                            color={isPlaying ? colors.accent : colors.textSecondary}
+                        />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.playBtn}>
+                        <MaterialCommunityIcons
+                            name="script-text-outline"
+                            size={24}
+                            color={colors.border}
+                        />
+                    </View>
+                )}
 
                 {onMorePress && (
                     <TouchableOpacity
@@ -120,6 +156,10 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 8,
+    },
+    fallback: {
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     overlay: {
         position: 'absolute',
@@ -163,6 +203,8 @@ const styles = StyleSheet.create({
     },
     playBtn: {
         padding: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     moreBtn: {
         padding: 4,

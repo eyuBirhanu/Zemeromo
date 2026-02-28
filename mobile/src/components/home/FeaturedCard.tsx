@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,20 +11,22 @@ const CARD_HEIGHT = 200;
 
 interface Props {
     item: any;
-    onPress: () => void;     // Tapping the card (Open details)
-    onPlayPress: () => void; // Tapping the action button
+    onPress: () => void;
+    onPlayPress: () => void;
 }
 
 export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
     const colors = useThemeColors();
-    const isSong = item.type === 'song' || item.type === 'Song';
+    const [imageError, setImageError] = useState(false); // Track if image failed
 
-    // Data Safeguards
+    const isSong = item.type === 'song' || item.type === 'Song';
     const artistName = typeof item.artist === 'object' ? item.artist.name : (item.artist || 'Unknown');
     const artistImage = typeof item.artist === 'object' ? item.artist.image : null;
-    const coverImage = item.coverImage || item.thumbnailUrl;
 
-    // Tag Logic: Take first 2 tags only
+    // Check for valid image URL
+    const coverImage = item.coverImage || item.thumbnailUrl;
+    const hasValidImage = coverImage && coverImage.trim().length > 0 && !imageError;
+
     const displayTags = item.tags ? item.tags.slice(0, 2) : [];
 
     return (
@@ -33,18 +35,36 @@ export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
             onPress={onPress}
             style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}
         >
-            {/* Background Image */}
-            <Image source={{ uri: coverImage }} style={styles.image} resizeMode="cover" />
+            {/* 1. BACKGROUND LAYER */}
+            {hasValidImage ? (
+                // A. Real Image
+                <Image
+                    source={{ uri: coverImage }}
+                    style={styles.image}
+                    resizeMode="cover"
+                    onError={() => setImageError(true)} // Trigger fallback if load fails
+                />
+            ) : (
+                // B. Fallback Abstract Gradient (Professional Look)
+                <LinearGradient
+                    colors={[colors.primary, '#000000']} // Emerald to Black
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.image}
+                />
+            )}
 
-            {/* Professional Gradient: Keep dark overlay for text readability */}
+            {/* 2. OVERLAY GRADIENT (Always needed for text readability) */}
             <LinearGradient
                 colors={['transparent', 'rgba(15, 19, 26, 0.6)', 'rgba(15, 19, 26, 0.95)']}
                 locations={[0, 0.6, 1]}
                 style={styles.gradient}
             />
 
+            {/* 3. CONTENT LAYER */}
             <View style={styles.content}>
-                {/* TOP: Tags Row (Subtle & Professional) */}
+
+                {/* TOP: Tags */}
                 <View style={styles.topRow}>
                     <View style={[styles.typeBadge, { backgroundColor: isSong ? colors.accent : colors.primary }]}>
                         <Text style={[styles.typeText, { color: isSong ? 'black' : 'white' }]}>
@@ -61,13 +81,12 @@ export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
                     </View>
                 </View>
 
-                {/* BOTTOM: Info & Action */}
+                {/* BOTTOM: Info */}
                 <View style={styles.bottomSection}>
                     <View style={styles.textContainer}>
                         <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
 
                         <View style={styles.artistRow}>
-                            {/* Small, Professional Avatar */}
                             {artistImage ? (
                                 <Image source={{ uri: artistImage }} style={styles.artistAvatar} />
                             ) : (
@@ -77,7 +96,7 @@ export default function FeaturedCard({ item, onPress, onPlayPress }: Props) {
                         </View>
                     </View>
 
-                    {/* Action Button: Distinct for Song vs Album */}
+                    {/* Action Button */}
                     {isSong ? (
                         <TouchableOpacity
                             style={[styles.playBtn, { backgroundColor: colors.accent }]}
@@ -104,7 +123,7 @@ const styles = StyleSheet.create({
     container: {
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
-        borderRadius: 16, // User requested: Not too circled
+        borderRadius: 16,
         marginRight: SPACING.m,
         borderWidth: 1,
         overflow: 'hidden',
@@ -113,6 +132,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         position: 'absolute',
+        backgroundColor: '#1a1f2b', // Default bg color while loading
     },
     gradient: {
         width: '100%',
@@ -142,7 +162,7 @@ const styles = StyleSheet.create({
     tagContainer: {
         flexDirection: 'row',
         gap: 6,
-        maxWidth: '60%', // Prevent tags from overlapping badge
+        maxWidth: '60%',
         justifyContent: 'flex-end',
     },
     tag: {
@@ -154,7 +174,7 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255,255,255,0.1)',
     },
     tagText: {
-        color: 'rgba(255,255,255,0.8)', // Kept consistent for dark bg readability
+        color: 'rgba(255,255,255,0.8)',
         fontSize: 10,
         fontFamily: FONTS.medium,
     },
@@ -168,8 +188,8 @@ const styles = StyleSheet.create({
         paddingRight: SPACING.s,
     },
     title: {
-        color: 'white', // Kept white because of dark gradient
-        fontSize: 20, // Slightly reduced for cleaner look
+        color: 'white', // Always white because of dark overlay
+        fontSize: 20,
         fontFamily: FONTS.bold,
         marginBottom: 6,
         letterSpacing: -0.5,
@@ -182,18 +202,17 @@ const styles = StyleSheet.create({
     artistAvatar: {
         width: 20,
         height: 20,
-        borderRadius: 10, // Perfectly circular
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: 'white',
     },
     artistName: {
-        color: 'rgba(255,255,255,0.8)', // Kept light for readability over gradient
+        color: 'rgba(255,255,255,0.8)',
         fontSize: 12,
         fontFamily: FONTS.medium,
     },
-    // The "Play" button for Songs
     playBtn: {
-        width: 44, // User requested: Not too big
+        width: 44,
         height: 44,
         borderRadius: 22,
         justifyContent: 'center',
@@ -203,7 +222,6 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 4,
     },
-    // The "View" indicator for Albums
     albumIcon: {
         flexDirection: 'column',
         alignItems: 'center',

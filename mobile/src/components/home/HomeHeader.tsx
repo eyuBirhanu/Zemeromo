@@ -36,11 +36,11 @@ export default function HomeHeader() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.profileBtn, { borderColor: colors.isDark ? colors.accent : colors.primary }]}
+                    style={[styles.profileBtn, { borderColor: colors.isDark ? colors.primary : colors.primary }]}
                     onPress={() => navigation.navigate('Profile')}
                 >
                     {/* Placeholder Avatar */}
-                    <View style={[styles.avatar, { backgroundColor: colors.isDark ? colors.accent : colors.primary }]}>
+                    <View style={[styles.avatar, { backgroundColor: colors.isDark ? colors.primary : colors.primary }]}>
                         <Ionicons name="person" size={16} color={colors.isDark ? colors.black : colors.white} />
                     </View>
                 </TouchableOpacity>
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
         alignItems: 'baseline',
     },
     brandText: {
-        fontFamily: FONTS.bold,
+        fontFamily: 'serif',
         fontSize: 24,
         letterSpacing: -0.5,
     },
