@@ -1,21 +1,22 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
-const LOCAL_IP = '192.168.42.244';
-const PORT = '5000';
+// 1. Define Environments
+const DEV_URL = 'http://10.47.142.177:5000/api'; // Laptop IP
+const PROD_URL = 'https://zemeromo-api.onrender.com/api'; // Your Real Backend
 
-const BASE_URL = `http://${LOCAL_IP}:${PORT}/api`;
+// __DEV__ is a special variable that is TRUE when you run 'npx expo start'
+// and FALSE when you build the APK.
+const BASE_URL = __DEV__ ? DEV_URL : PROD_URL;
 
 const api = axios.create({
     baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 10000, // 10 seconds timeout
+    timeout: 15000, // Increased to 15s for slower mobile networks
 });
 
-// 1. Request Interceptor: Attach Token
 api.interceptors.request.use(async (config) => {
     try {
         const token = await SecureStore.getItemAsync('token');
@@ -28,17 +29,10 @@ api.interceptors.request.use(async (config) => {
     return config;
 });
 
-// 2. Response Interceptor: Handle Errors (Auto Logout)
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
-            // Token expired or invalid
-            await SecureStore.deleteItemAsync('token');
-            await SecureStore.deleteItemAsync('user');
-            // Logic to redirect to login will be handled by AuthContext later
-            console.log("Session expired. Please login again.");
-        }
+        // Optional: Add logic here to redirect to login if 401
         return Promise.reject(error);
     }
 );

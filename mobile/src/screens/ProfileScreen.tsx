@@ -115,7 +115,7 @@ export default function ProfileScreen() {
                         title="Terms of Service"
                         onPress={() => openInAppBrowser(`${WEBSITE_URL}/terms`)}
                     />
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         onPress={() => {
                             resetOnboarding();
                             alert("Onboarding reset! Restart the app to see it.");
@@ -123,7 +123,7 @@ export default function ProfileScreen() {
                         style={{ padding: 16, backgroundColor: 'red', borderRadius: 8, marginTop: 10 }}
                     >
                         <Text style={{ color: 'white', textAlign: 'center', fontWeight: 'bold' }}>Reset Onboarding (Test)</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
 
                 </View>
 

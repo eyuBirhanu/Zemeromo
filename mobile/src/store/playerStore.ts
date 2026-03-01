@@ -11,7 +11,10 @@ Audio.setAudioModeAsync({
     playThroughEarpieceAndroid: false,
 });
 
-const BASE_URL = "http://192.168.42.244:5000/"; // CHANGE TO YOUR LOCAL IP
+const DEV_URL = 'http://192.168.42.244:5000/';
+const PROD_URL = 'https://zemeromo-api.onrender.com/';
+
+const BASE_URL = __DEV__ ? DEV_URL : PROD_URL;
 
 const getFullAudioUrl = (url: string) => {
     if (!url) return "";

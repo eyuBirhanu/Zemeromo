@@ -8,7 +8,7 @@ export const COLORS = {
 
     // Dark Mode (Default)
     dark: {
-        bg: '#0f131a',        // Deep Charcoal (Main Background)
+        bg: '#0A0C02',        // Deep Charcoal (Main Background)
         surface: '#1a1f2b',   // Card Background
         surfaceLight: '#2C3240', // Lighter Surface for borders/inputs
         text: '#FFFFFF',      // Primary Text

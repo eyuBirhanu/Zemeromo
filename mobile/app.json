@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/zemeromo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0E1204"
+      "backgroundColor": "#0A0C02"
     },
     "ios": {
       "supportsTablet": true
@@ -19,19 +19,13 @@
       "package": "com.eyubirhanu.zemeromo",
       "adaptiveIcon": {
         "foregroundImage": "./assets/zemeromo.png",
-        "backgroundColor": "#0E1204"
+        "backgroundColor": "#0A0C02"
       },
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "READ_MEDIA_AUDIO",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-        "android.permission.ACCESS_MEDIA_LOCATION",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_MEDIA_AUDIO"
+        "INTERNET"
       ]
     },
     "plugins": [
