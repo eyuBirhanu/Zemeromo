@@ -35,12 +35,6 @@ export default function ChurchRow({ church, onToggleStatus, onDelete }: ChurchRo
         setShowDeleteModal(false);
     };
 
-    // --- 2. ISOLATED TOGGLE HANDLER ---
-    const handleToggle = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Stops the row from expanding
-        onToggleStatus(church._id, church.status);
-    };
-
     return (
         <>
             {/* --- MAIN ROW --- */}
@@ -92,17 +86,16 @@ export default function ChurchRow({ church, onToggleStatus, onDelete }: ChurchRo
                 </TableCell>
 
                 {/* 4. Status Toggle (FIXED) */}
-                <TableCell>
-                    {/* The div stops the click from triggering the row expansion */}
-                    <div
-                        className="flex items-center gap-3 inline-flex"
-                        onClick={handleToggle}
-                    >
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-3 inline-flex">
                         <Toggle
                             checked={isActive}
-                            onChange={() => { }} // We handle the click on the wrapper div instead
+                            onChange={() => onToggleStatus(church._id, church.status)}
                         />
-                        <span className={`text-[10px] uppercase font-bold tracking-wider transition-colors ${isActive ? "text-accent" : "text-gray-500"}`}>
+                        <span
+                            className={`text-[10px] uppercase font-bold tracking-wider transition-colors ${isActive ? "text-accent" : "text-gray-500"
+                                }`}
+                        >
                             {isActive ? "Verified" : "Pending"}
                         </span>
                     </div>
@@ -171,7 +164,7 @@ export default function ChurchRow({ church, onToggleStatus, onDelete }: ChurchRo
                             {/* Column 3: Advanced Actions */}
                             <div className="flex flex-col justify-center gap-3 border-l border-white/5 pl-6">
                                 <Link
-                                    href={`/dashboard/directory/edit-church/${church?._id}`}
+                                    href={`/dashboard/directory/edit/${church?._id}`}
                                     className="flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-gray-300 hover:text-white transition-colors"
                                 >
                                     <Edit3 size={16} />

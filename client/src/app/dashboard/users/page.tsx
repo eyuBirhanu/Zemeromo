@@ -59,6 +59,29 @@ export default function AdminsPage() {
         }
     };
 
+    const handleUpdateVerificationStatus = async (
+        id: string,
+        newStatus: "pending" | "verified" | "rejected"
+    ) => {
+        // Optimistic update
+        const updatedList = users.map(u =>
+            u._id === id ? { ...u, verificationStatus: newStatus } : u
+        );
+
+        setUsers(updatedList);
+
+        try {
+            await api.patch(`/users/${id}/verification-status`, {
+                verificationStatus: newStatus,
+            });
+
+            toast.success(`Status updated to ${newStatus}`);
+        } catch (error) {
+            toast.error("Failed to update verification status");
+            fetchUsers(); // revert
+        }
+    };
+
     // 3. Delete Admin
     const handleDeleteClick = (id: string) => {
         setUserToDelete(id); // This opens the modal
@@ -135,6 +158,7 @@ export default function AdminsPage() {
                     <TableHeaderCell>Church</TableHeaderCell>
                     <TableHeaderCell>Contact</TableHeaderCell>
                     <TableHeaderCell>Status</TableHeaderCell>
+                    <TableHeaderCell>Verification Status</TableHeaderCell>
                     <TableHeaderCell>Actions</TableHeaderCell>
                 </TableHead>
                 <tbody>
@@ -162,6 +186,7 @@ export default function AdminsPage() {
                                 index={index}
                                 onToggleStatus={handleToggleStatus}
                                 onDelete={handleDeleteClick} // Pass the click handler, not the execution
+                                onUpdateVerificationStatus={handleUpdateVerificationStatus}
                             />
                         ))
                     )}

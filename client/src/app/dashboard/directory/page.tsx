@@ -45,22 +45,23 @@ export default function DirectoryPage() {
         router.push(`/dashboard/directory?tab=${tab}`);
     };
 
-    //     const handleToggleChurchStatus = async (id: string, currentStatus: string) => {
-    //     try {
-    //         // Automatically determine the opposite status
-    //         const newStatus = currentStatus === "verified" ? "pending" : "verified";
+    const handleToggleChurchStatus = async (id: string, currentStatus: string) => {
+        try {
+            // Automatically determine the opposite status
+            const newStatus = currentStatus === "verified" ? "pending" : "verified";
 
-    //         // 1. Send to backend
-    //         await api.put(`/churches/${id}/verify`, { status: newStatus });
+            // 1. Send to backend
+            await api.put(`/churches/${id}/verify`, { status: newStatus });
 
-    //         // 2. Refetch the data so the UI updates!
-    //         fetchChurches(); // Or whatever your fetch function is named
+            // 2. Refetch the data so the UI updates!
+            fetchData();
 
-    //         toast.success(`Church marked as ${newStatus}`);
-    //     } catch (error) {
-    //         toast.error("Failed to update church status");
-    //     }
-    // };
+            toast.success(`Church marked as ${newStatus}`);
+        } catch (error) {
+            toast.error("Failed to update church status");
+        }
+    };
+
     // 2. Security Check: Is user allowed on this tab?
     const currentTabDef = TABS.find(t => t.id === activeTab);
     const isAllowed = currentTabDef?.roles.includes(user?.role || "");
@@ -261,8 +262,8 @@ export default function DirectoryPage() {
                                     <ChurchRow
                                         key={item._id}
                                         church={item}
-                                        onToggleStatus={() => { }} // Pass handler if needed
-                                        onDelete={() => handleDelete(item._id)} // Simple delete for now
+                                        onToggleStatus={handleToggleChurchStatus}
+                                        onDelete={() => handleDelete(item._id)}
                                     />
                                 );
                             }

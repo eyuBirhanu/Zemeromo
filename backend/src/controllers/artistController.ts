@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import Artist from "../models/Artist";
+import Album from "../models/Album";
+import Song from "../models/Song";
 
 interface AuthRequest extends Request {
     user?: any;
@@ -27,16 +29,13 @@ export const createArtist = async (req: AuthRequest, res: Response) => {
             }
         }
 
-        // --- 2. FIX: VERIFICATION & ACTIVE LOGIC ---
-        // By default, a new artist IS active.
+        // --- 2. VERIFICATION LOGIC ---
         let finalIsActive = true;
 
-        // If frontend explicitly sent a status, use it
         if (isActive !== undefined) {
             finalIsActive = isActive === 'true' || isActive === true;
         }
 
-        // ONLY force to false (Draft) if the admin is pending verification
         if (user.role === 'church_admin' && user.verificationStatus !== 'verified') {
             finalIsActive = false;
         }
@@ -59,7 +58,7 @@ export const createArtist = async (req: AuthRequest, res: Response) => {
             imageUrl,
             tags: parsedTags,
             membersCount: Number(membersCount) || 1,
-            isActive: finalIsActive, // <--- Now defaults to TRUE safely
+            isActive: finalIsActive,
             isDeleted: false
         });
 
@@ -90,7 +89,6 @@ export const getArtists = async (req: AuthRequest, res: Response) => {
             if (churchId) query.churchId = churchId;
             query.isDeleted = showDeleted === 'true';
         } else {
-            // Guests see only ACTIVE and NON-DELETED
             query.isDeleted = false;
             query.isActive = true;
             if (churchId) query.churchId = churchId;
@@ -131,13 +129,7 @@ export const updateArtist = async (req: AuthRequest, res: Response) => {
         const user = req.user;
         const isSuper = user.role === 'super_admin';
 
-        // --- 1. OWNERSHIP CHECK ---
-        if (!isSuper && artist.churchId?.toString() !== user.churchId) {
-            return res.status(403).json({ success: false, message: "Not authorized" });
-        }
-
-        // --- 2. VERIFICATION CHECK (NEW) ---
-        // If Church Admin is trying to update, they MUST be verified
+        // 🚨 CHECK 1: VERIFICATION
         if (!isSuper && user.verificationStatus !== 'verified') {
             return res.status(403).json({
                 success: false,
@@ -145,23 +137,32 @@ export const updateArtist = async (req: AuthRequest, res: Response) => {
             });
         }
 
+        // 🚨 CHECK 2: OWNERSHIP (Strict String Comparison)
+        const artistChurchId = artist.churchId?.toString();
+        const userChurchId = user.churchId ? user.churchId.toString() : "";
+
+        if (!isSuper && artistChurchId !== userChurchId) {
+            return res.status(403).json({ success: false, message: "Not authorized" });
+        }
+
         const { name, description, isGroup, tags, isActive, isDeleted, membersCount } = req.body;
 
         if (name) artist.name = name;
         if (description) artist.description = description;
         if (membersCount) artist.membersCount = Number(membersCount);
-        if (isGroup !== undefined) artist.isGroup = isGroup === 'true';
 
-        // Only Super Admin or Verified Admin can change status
-        if (isActive !== undefined) artist.isActive = isActive === 'true';
+        // Handle Booleans
+        if (isGroup !== undefined) artist.isGroup = String(isGroup) === 'true';
+        if (isActive !== undefined) artist.isActive = String(isActive) === 'true';
 
-        // Only Super Admin handles hard restore
-        if (isDeleted !== undefined && isSuper) artist.isDeleted = isDeleted === 'true';
+        if (isDeleted !== undefined && isSuper) {
+            artist.isDeleted = String(isDeleted) === 'true';
+        }
 
         if (tags) {
             artist.tags = Array.isArray(tags)
                 ? tags
-                : tags.split(",").map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+                : String(tags).split(",").map((t: string) => t.trim()).filter((t: string) => t.length > 0);
         }
 
         if (req.file) artist.imageUrl = req.file.path;
@@ -170,6 +171,7 @@ export const updateArtist = async (req: AuthRequest, res: Response) => {
         res.json({ success: true, data: artist });
 
     } catch (error) {
+        console.error("Update Artist Error:", error);
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
@@ -185,7 +187,7 @@ export const deleteArtist = async (req: AuthRequest, res: Response) => {
 
         const user = req.user;
 
-        // --- VERIFICATION CHECK ---
+        // 🚨 CHECK 1: VERIFICATION
         if (user.role === 'church_admin' && user.verificationStatus !== 'verified') {
             return res.status(403).json({
                 success: false,
@@ -193,8 +195,12 @@ export const deleteArtist = async (req: AuthRequest, res: Response) => {
             });
         }
 
+        // 🚨 CHECK 2: OWNERSHIP
+        const artistChurchId = artist.churchId?.toString();
+        const userChurchId = user.churchId ? user.churchId.toString() : "";
+
         if (user.role === 'church_admin') {
-            if (artist.churchId?.toString() !== user.churchId) {
+            if (artistChurchId !== userChurchId) {
                 return res.status(403).json({ success: false, message: "Not authorized" });
             }
             artist.isDeleted = true;

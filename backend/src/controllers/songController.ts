@@ -11,7 +11,7 @@ interface AuthRequest extends Request {
 
 /**
  * @desc    Add a New Song
- * @logic   If unverified, force status to "archived" (Draft)
+ * @logic   If unverified, force status to "archived" (Draft). Audio is OPTIONAL.
  */
 export const createSong = async (req: Request, res: Response) => {
     try {
@@ -43,11 +43,18 @@ export const createSong = async (req: Request, res: Response) => {
             finalStatus = "archived";
         }
 
-        // --- 3. HANDLE FILES ---
+        // --- 3. HANDLE FILES (OPTIONAL) ---
         const files = authReq.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
         const audioFile = files?.["audio"]?.[0];
         const imageFile = files?.["thumbnail"]?.[0];
 
+        // 🚨 FIX: We allow creation if Audio OR Lyrics exists. Both missing = Error.
+        if (!audioFile && (!lyrics || lyrics.trim().length === 0)) {
+            return res.status(400).json({
+                success: false,
+                message: "You must provide either an Audio File or Lyrics."
+            });
+        }
 
         // --- 4. PARSE TAGS ---
         let parsedTags: string[] = [];
@@ -55,25 +62,25 @@ export const createSong = async (req: Request, res: Response) => {
             parsedTags = Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim());
         }
 
-        if (!audioFile && !lyrics) {
-            return res.status(400).json({
-                success: false,
-                message: "You must provide either audio file or lyrics."
-            });
-        }
-
         // --- 5. CREATE SONG ---
         const song = await Song.create({
-            title, lyrics, artistId, albumId, churchId,
+            title,
+            lyrics: lyrics || "", // Allow empty string if audio exists
+            artistId,
+            albumId,
+            churchId,
             genre: genre || "Worship",
             language: language || "Amharic",
+
+            // Audio is optional now
             audioUrl: audioFile ? audioFile.path : "",
             thumbnailUrl: imageFile ? imageFile.path : "",
+
             isCover: isCover === 'true' || isCover === true,
             originalCredits: originalCredits || "",
             credits: { writer, composer, arranger },
             tags: parsedTags,
-            status: finalStatus, // Applied here
+            status: finalStatus,
             isDeleted: false,
             isFeatured: false
         });
@@ -141,34 +148,33 @@ export const getSongs = async (req: Request, res: Response) => {
 
 /**
  * @desc    Update Song
- * @logic   Block if Church Admin is NOT verified
  */
 export const updateSong = async (req: Request, res: Response) => {
     try {
         const authReq = req as AuthRequest;
         const songId = req.params.id;
-
-        console.log(`📝 Updating Song ID: ${songId}`);
+        const user = authReq.user;
 
         // 1. Find Song
         const song = await Song.findById(songId);
         if (!song) return res.status(404).json({ success: false, message: "Song not found" });
 
         // 2. Security Check
-        const user = authReq.user;
-        if (!user) return res.status(401).json({ success: false, message: "Unauthorized" });
-
         const isSuper = user.role === 'super_admin';
-
-        if (!isSuper && song.churchId.toString() !== user.churchId) {
-            return res.status(403).json({ success: false, message: "Unauthorized to edit this song" });
-        }
 
         if (!isSuper && user.verificationStatus !== 'verified') {
             return res.status(403).json({
                 success: false,
                 message: "Your account is pending verification. You cannot edit songs."
             });
+        }
+
+        // Strict String Comparison
+        const songChurchId = song.churchId.toString();
+        const userChurchId = user.churchId ? user.churchId.toString() : "";
+
+        if (!isSuper && songChurchId !== userChurchId) {
+            return res.status(403).json({ success: false, message: "Unauthorized to edit this song" });
         }
 
         // 3. Update Text Fields
@@ -180,15 +186,9 @@ export const updateSong = async (req: Request, res: Response) => {
         if (body.status) song.status = body.status;
         if (body.originalCredits) song.originalCredits = body.originalCredits;
 
-        // Handle Booleans (FormData sends "true"/"false" strings)
-        if (body.isCover !== undefined) {
-            song.isCover = String(body.isCover) === 'true';
-        }
-        if (body.isFeatured !== undefined) {
-            song.isFeatured = String(body.isFeatured) === 'true';
-        }
+        if (body.isCover !== undefined) song.isCover = String(body.isCover) === 'true';
+        if (body.isFeatured !== undefined) song.isFeatured = String(body.isFeatured) === 'true';
 
-        // Handle Objects
         if (body.writer || body.composer) {
             song.credits = {
                 writer: body.writer || song.credits?.writer,
@@ -197,56 +197,45 @@ export const updateSong = async (req: Request, res: Response) => {
             };
         }
 
-        // Handle Arrays
-        const rawTags = body.tags || body['tags[]'];
-        if (rawTags) {
-            song.tags = Array.isArray(rawTags)
-                ? rawTags
-                : String(rawTags).split(',').map((t: string) => t.trim()).filter(t => t.length > 0);
+        if (body.tags) {
+            song.tags = Array.isArray(body.tags)
+                ? body.tags
+                : String(body.tags).split(',').map((t: string) => t.trim()).filter(t => t.length > 0);
         }
 
         if (body.isDeleted !== undefined && isSuper) {
             song.isDeleted = String(body.isDeleted) === 'true';
         }
 
-        // 4. Handle Files (SAFELY)
-        // Check if files exist before trying to access them
+        // 4. Handle Files (Safely)
         const files = authReq.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
         if (files) {
-            // Update Audio if provided
             if (files["audio"] && files["audio"].length > 0) {
-                console.log("🎵 New Audio Detected");
+                console.log("🎵 Updating Audio...");
                 song.audioUrl = files["audio"][0].path;
-                // Optional: Update file size if your model supports it
-                // song.fileSize = files["audio"][0].size; 
             }
-
-            // Update Thumbnail if provided
             if (files["thumbnail"] && files["thumbnail"].length > 0) {
-                console.log("🖼️ New Thumbnail Detected");
+                console.log("🖼️ Updating Thumbnail...");
                 song.thumbnailUrl = files["thumbnail"][0].path;
             }
         }
 
         await song.save();
-        console.log("✅ Song Updated Successfully");
-
         res.json({ success: true, data: song, message: "Song updated" });
 
     } catch (error: any) {
         console.error("❌ Update Song Error Stack:", error.stack);
-        // Return JSON error even if it crashes, so frontend doesn't get HTML
         res.status(500).json({
             success: false,
             message: "Server Error during update",
-            error: error.message || "Unknown Error"
+            error: error.message
         });
     }
 };
+
 /**
  * @desc    Delete Song
- * @logic   Block if Church Admin is NOT verified
  */
 export const deleteSong = async (req: Request, res: Response) => {
     try {
@@ -256,7 +245,6 @@ export const deleteSong = async (req: Request, res: Response) => {
 
         const user = authReq.user;
 
-        // --- VERIFICATION CHECK ---
         if (user.role === 'church_admin' && user.verificationStatus !== 'verified') {
             return res.status(403).json({
                 success: false,

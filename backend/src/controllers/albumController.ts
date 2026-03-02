@@ -45,7 +45,6 @@ export const createAlbum = async (req: AuthRequest, res: Response) => {
         }
 
         // --- 4. CREATE ALBUM ---
-        // Notice: 'isPublished' is always false on creation to ensure it acts as a Draft.
         const album = await Album.create({
             title,
             artistId,
@@ -55,7 +54,7 @@ export const createAlbum = async (req: AuthRequest, res: Response) => {
             genre: genre || "Worship",
             releaseYear,
             coverImageUrl,
-            isPublished: false,
+            isPublished: false, // Default to draft
             isFeatured: false,
             isDeleted: false
         });
@@ -95,11 +94,10 @@ export const getAlbums = async (req: AuthRequest, res: Response) => {
         // --- 3. GUEST / MOBILE APP ---
         else {
             query.isDeleted = false;
-            query.isPublished = true; // <-- CRITICAL FIX: Guests only see published albums
+            query.isPublished = true;
             if (churchId) query.churchId = churchId;
         }
 
-        // Common filter
         if (artistId) query.artistId = artistId;
 
         const albums = await Album.find(query)
@@ -149,14 +147,8 @@ export const updateAlbum = async (req: AuthRequest, res: Response) => {
 
         const user = req.user;
         const isSuper = user.role === 'super_admin';
-        const isOwner = user.role === 'church_admin' && album.churchId.toString() === user.churchId;
 
-        // --- 1. OWNERSHIP CHECK ---
-        if (!isOwner && !isSuper) {
-            return res.status(403).json({ success: false, message: "Not authorized to edit this album" });
-        }
-
-        // --- 2. VERIFICATION CHECK ---
+        // 🚨 CHECK 1: VERIFICATION
         if (!isSuper && user.verificationStatus !== 'verified') {
             return res.status(403).json({
                 success: false,
@@ -164,22 +156,41 @@ export const updateAlbum = async (req: AuthRequest, res: Response) => {
             });
         }
 
+        // 🚨 CHECK 2: OWNERSHIP (Strict String Comparison)
+        const albumChurchId = album.churchId.toString();
+        const userChurchId = user.churchId ? user.churchId.toString() : "";
+
+        if (!isSuper && albumChurchId !== userChurchId) {
+            return res.status(403).json({ success: false, message: "Not authorized to edit this album" });
+        }
+
         const { title, description, price, isPublished, isFeatured, genre, tags, releaseYear, isDeleted } = req.body;
 
         if (title) album.title = title;
         if (description) album.description = description;
-        if (price) album.price = price;
+
+        // Handle Price (ensure number)
+        if (price !== undefined) album.price = Number(price);
+
         if (genre) album.genre = genre;
         if (releaseYear) album.releaseYear = releaseYear;
-        if (isPublished !== undefined) album.isPublished = isPublished === 'true' || isPublished === true;
-        if (isFeatured !== undefined) album.isFeatured = isFeatured === 'true' || isFeatured === true;
-        if (tags) album.tags = tags;
 
-        // RESTORE LOGIC (Super Admin Only)
-        if (isDeleted !== undefined && isSuper) {
-            album.isDeleted = isDeleted === 'true' || isDeleted === true;
+        // Handle Booleans (FormData sends "true"/"false")
+        if (isPublished !== undefined) album.isPublished = String(isPublished) === 'true';
+        if (isFeatured !== undefined) album.isFeatured = String(isFeatured) === 'true';
+
+        // Handle Tags (Array or Comma String)
+        if (tags) {
+            album.tags = Array.isArray(tags)
+                ? tags
+                : String(tags).split(',').map((t: string) => t.trim()).filter(t => t.length > 0);
         }
 
+        if (isDeleted !== undefined && isSuper) {
+            album.isDeleted = String(isDeleted) === 'true';
+        }
+
+        // Handle File (Generic 'file' from Multer single)
         if (req.file) {
             album.coverImageUrl = req.file.path;
         }
@@ -188,6 +199,7 @@ export const updateAlbum = async (req: AuthRequest, res: Response) => {
         res.json({ success: true, data: album });
 
     } catch (error) {
+        console.error("Update Album Error:", error);
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
@@ -203,7 +215,7 @@ export const deleteAlbum = async (req: AuthRequest, res: Response) => {
 
         const user = req.user;
 
-        // --- VERIFICATION CHECK ---
+        // 🚨 CHECK 1: VERIFICATION
         if (user.role === 'church_admin' && user.verificationStatus !== 'verified') {
             return res.status(403).json({
                 success: false,
@@ -211,8 +223,12 @@ export const deleteAlbum = async (req: AuthRequest, res: Response) => {
             });
         }
 
+        // 🚨 CHECK 2: OWNERSHIP
+        const albumChurchId = album.churchId.toString();
+        const userChurchId = user.churchId ? user.churchId.toString() : "";
+
         if (user.role === 'church_admin') {
-            if (album.churchId.toString() !== user.churchId) {
+            if (albumChurchId !== userChurchId) {
                 return res.status(403).json({ success: false, message: "Not authorized" });
             }
             album.isDeleted = true;

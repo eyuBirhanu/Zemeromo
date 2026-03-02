@@ -1,8 +1,23 @@
+# Ignore System Files
 node_modules/
 .expo/
 npm-debug.log
-yarn-debug.log
 yarn-error.log
+
+# Ignore Native Build Folders
 android/
 ios/
-.git/
+
+# Ignore Web/Build Artifacts
+dist/
+web-build/
+.next/
+
+# Ignore the sibling client folder if you are in a monorepo
+../client/
+../backend/
+
+# Ignore local keys
+*.jks
+*.keystore
+*.p12

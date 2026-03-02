@@ -10,9 +10,10 @@ interface AdminRowProps {
     index: number; // Row Counter
     onToggleStatus: (id: string, status: boolean) => void;
     onDelete: (id: string) => void;
+    onUpdateVerificationStatus: (id: string, status: "pending" | "verified" | "rejected") => void;
 }
 
-export default function AdminRow({ user, index, onToggleStatus, onDelete }: AdminRowProps) {
+export default function AdminRow({ user, index, onToggleStatus, onDelete, onUpdateVerificationStatus }: AdminRowProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Safe stats (default to 0 if missing)
@@ -71,6 +72,41 @@ export default function AdminRow({ user, index, onToggleStatus, onDelete }: Admi
                     </div>
                 </TableCell>
 
+                {/* 5. Verification Status */}
+                <TableCell>
+                    <div
+                        className="inline-flex rounded-lg border border-white/10 bg-white/[0.02] p-1"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {(["pending", "verified", "rejected"] as const).map((status, i) => {
+                            const isActive = user.verificationStatus === status;
+
+                            const baseStyle =
+                                "px-3 py-1 text-xs font-medium transition-all duration-200 rounded-md";
+
+                            const activeStyle =
+                                status === "verified"
+                                    ? "bg-accent/20 text-accent border border-accent/30"
+                                    : status === "rejected"
+                                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                        : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
+
+                            const inactiveStyle =
+                                "text-gray-400 hover:text-white hover:bg-white/5";
+
+                            return (
+                                <button
+                                    key={status}
+                                    onClick={() => onUpdateVerificationStatus(user._id, status)}
+                                    className={`${baseStyle} ${isActive ? activeStyle : inactiveStyle}`}
+                                >
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </TableCell>
+
                 {/* 6. Actions */}
                 <TableCell>
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -96,7 +132,7 @@ export default function AdminRow({ user, index, onToggleStatus, onDelete }: Admi
             {/* --- EXPANDED STATS ROW --- */}
             {isExpanded && (
                 <tr className="bg-black/20 border-b border-white/5 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <td colSpan={6} className="p-4 sm:p-6">
+                    <td colSpan={7} className="p-4 sm:p-6">
                         <div className="flex flex-col sm:flex-row gap-4 items-center justify-around bg-white/[0.02] border border-white/5 rounded-xl p-6 shadow-inner">
 
                             {/* Stat 1: Singers */}

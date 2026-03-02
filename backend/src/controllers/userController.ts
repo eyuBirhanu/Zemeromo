@@ -55,11 +55,19 @@ export const toggleUserStatus = async (req: Request, res: Response) => {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // Toggle
         user.isActive = !user.isActive;
+
+        if (user.isActive && user.verificationStatus !== 'verified') {
+            user.verificationStatus = 'verified';
+        }
+
         await user.save();
 
-        res.json({ success: true, message: `User is now ${user.isActive ? 'Active' : 'Inactive'}`, data: user });
+        res.json({
+            success: true,
+            message: `User is now ${user.isActive ? 'Active' : 'Inactive'}`,
+            data: user
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error" });
     }
@@ -71,10 +79,6 @@ export const toggleUserStatus = async (req: Request, res: Response) => {
  */
 export const deleteUser = async (req: Request, res: Response) => {
     try {
-        // DECISION: Deleting an Admin should NOT delete the songs. 
-        // Songs belong to the Church, not the specific person.
-        // We just remove the access.
-
         const user = await User.findByIdAndDelete(req.params.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -93,8 +97,6 @@ export const getAdminStats = async (req: Request, res: Response) => {
         const user = await User.findById(req.params.id).populate("churchId");
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // Count songs/albums uploaded by this user's church
-        // Assuming Songs have a 'churchId' or 'uploadedBy' field
         const songCount = await Song.countDocuments({ churchId: user.churchId });
         const albumCount = await Album.countDocuments({ churchId: user.churchId });
 
@@ -111,5 +113,42 @@ export const getAdminStats = async (req: Request, res: Response) => {
         });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+export const changeAdminVerificationStatus = async (req: Request, res: Response) => {
+    try {
+        const { verificationStatus } = req.body;
+
+        const allowedStatuses = ["pending", "verified", "rejected"];
+
+        if (!allowedStatuses.includes(verificationStatus)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification status"
+            });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        user.verificationStatus = verificationStatus;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: `User is now ${verificationStatus}`,
+            data: user
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Server Error"
+        });
     }
 };

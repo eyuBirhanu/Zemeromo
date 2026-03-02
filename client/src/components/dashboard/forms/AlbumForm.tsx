@@ -293,6 +293,7 @@ export default function AlbumForm({ albumId }: AlbumFormProps) {
                                 label="Price (ETB)"
                                 type="number"
                                 placeholder="0 for Free"
+                                disabled
                                 {...register("price")}
                             />
                         </div>

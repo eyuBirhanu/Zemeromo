@@ -98,8 +98,6 @@ export const createChurchAdmin = async (req: Request, res: Response) => {
             passwordHash: password,
             role: "church_admin",
             churchId: church._id,
-            // FIX 3: Since a Super Admin is creating them from the dashboard, 
-            // they should be automatically verified.
             verificationStatus: "verified",
             isActive: true
         });

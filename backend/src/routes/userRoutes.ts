@@ -1,5 +1,5 @@
 import express from "express";
-import { getChurchAdmins, toggleUserStatus, deleteUser, getAdminStats } from "../controllers/userController";
+import { getChurchAdmins, toggleUserStatus, deleteUser, getAdminStats, changeAdminVerificationStatus } from "../controllers/userController";
 import { protect, authorize } from "../middleware/auth";
 
 const router = express.Router();
@@ -11,5 +11,6 @@ router.get("/admins", authorize("super_admin"), getChurchAdmins);
 router.patch("/:id/status", authorize("super_admin"), toggleUserStatus);
 router.delete("/:id", authorize("super_admin"), deleteUser);
 router.get("/:id/stats", authorize("super_admin"), getAdminStats);
+router.patch("/:id/verification-status", authorize("super_admin"), changeAdminVerificationStatus);
 
 export default router;
