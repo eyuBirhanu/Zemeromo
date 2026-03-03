@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 // 1. Define Environments
-const DEV_URL = 'http://10.47.142.177:5000/api'; // Laptop IP
+const DEV_URL = 'http://192.168.42.244:5000/api'; // Laptop IP
 const PROD_URL = 'https://zemeromo-api.onrender.com/api'; // Your Real Backend
 
 // __DEV__ is a special variable that is TRUE when you run 'npx expo start'
