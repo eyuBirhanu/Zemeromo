@@ -376,3 +376,49 @@ export const resetPassword = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
+
+
+export const seedSuperAdminForce = async (req: Request, res: Response) => {
+    try {
+        // 1. Security Check: Require the JWT_SECRET as a password in the URL
+        if (req.query.secret !== process.env.JWT_SECRET) {
+            return res.status(403).json({ message: "Invalid secret key" });
+        }
+
+        // 2. Load Env Vars
+        const adminPhone = process.env.ADMIN_PHONE;
+        const adminEmail = process.env.ADMIN_EMAIL || "zemeromo@gmail.com";
+        const adminPass = process.env.ADMIN_PASSWORD;
+
+        if (!adminPhone || !adminPass) {
+            return res.status(500).json({ message: "Missing Env Vars in Render" });
+        }
+
+        // 3. Delete existing Super Admin
+        await User.deleteMany({ role: "super_admin" });
+
+        // 4. Create New Super Admin
+        const superAdmin = await User.create({
+            username: "Super Admin",
+            email: adminEmail,
+            phoneNumber: adminPhone,
+            passwordHash: adminPass,
+            role: "super_admin",
+            isActive: true,
+            verificationStatus: "verified",
+            churchId: undefined
+        });
+
+        res.json({
+            success: true,
+            message: "Super Admin Reset Successfully",
+            details: {
+                email: adminEmail,
+                phone: adminPhone
+            }
+        });
+
+    } catch (error: any) {
+        res.status(500).json({ message: "Seeding Failed", error: error.message });
+    }
+};

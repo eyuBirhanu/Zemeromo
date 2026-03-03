@@ -7,26 +7,27 @@ dotenv.config();
 
 const seedSuperAdmin = async () => {
     try {
-        // 1. Validation
-        if (!process.env.SUPER_ADMIN_PHONE || !process.env.SUPER_ADMIN_PASS) {
-            console.error("❌ MISSING ENV VARS: Please set SUPER_ADMIN_PHONE and SUPER_ADMIN_PASS in .env");
+        // 1. Validation: Ensure we have the secrets
+        const adminPhone = process.env.ADMIN_PHONE;
+        const adminEmail = process.env.ADMIN_EMAIL || "zemeromo@gmail.com";
+        const adminPass = process.env.ADMIN_PASSWORD;
+
+        if (!adminPhone || !adminPass) {
+            console.error("❌ MISSING ENV VARS: Please set ADMIN_PHONE and ADMIN_PASSWORD in your .env file");
             process.exit(1);
         }
 
-        // 2. Connect
-        await connectDB();
+        // 2. Connect to Database
+        if (mongoose.connection.readyState === 0) {
+            await connectDB();
+        }
         console.log("🔌 Connected to DB for Seeding...");
 
-        const adminPhone = process.env.SUPER_ADMIN_PHONE;
-        const adminEmail = process.env.SUPER_ADMIN_EMAIL || "admin@zemeromo.et";
-        const adminPass = process.env.SUPER_ADMIN_PASS;
-
-        // 3. Clean Slate: Remove existing admin with these credentials
         const deleted = await User.deleteMany({
             $or: [
                 { phoneNumber: adminPhone },
                 { email: adminEmail },
-                { role: "super_admin" } // Optional: Wipes ALL super admins to ensure only one exists
+                { role: "super_admin" }
             ]
         });
 
@@ -35,15 +36,17 @@ const seedSuperAdmin = async () => {
         }
 
         // 4. Create New Admin
-        // NOTE: We pass plain text password. The User model 'pre-save' hook hashes it.
         const adminUser = new User({
-            username: "Zemeromo Super Admin",
+            username: "Super Admin",
             email: adminEmail,
             phoneNumber: adminPhone,
             passwordHash: adminPass,
             role: "super_admin",
+
             isActive: true,
-            verificationStatus: "verified", // Crucial for access
+            verificationStatus: "verified",
+
+            churchId: null,
             favorites: [],
             library: []
         });
