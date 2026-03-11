@@ -11,7 +11,7 @@ import { usePlayerStore } from '../store/playerStore';
 import MiniPlayer from '../components/player/MiniPlayer';
 import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
-import LibraryScreen from '../screens/LibraryScreen'; // NEW
+import LibraryScreen from '../screens/LibraryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
