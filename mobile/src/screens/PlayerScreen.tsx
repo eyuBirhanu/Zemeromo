@@ -113,9 +113,9 @@ export default function PlayerScreen() {
                         </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.iconBtn} hitSlop={10}>
+                    {/* <TouchableOpacity style={styles.iconBtn} hitSlop={10}>
                         <MaterialCommunityIcons name="dots-horizontal" size={28} color="white" />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                 </View>
 
                 <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet, ScrollView,
-    StatusBar, ActivityIndicator, Platform
+    StatusBar, Platform, Animated
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
@@ -13,7 +13,6 @@ import { SPACING, FONTS } from '../constants/theme';
 import { Song } from '../types/api';
 import { usePlayerStore } from '../store/playerStore';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { useFavorites } from '../hooks/useFavorites'; // Added Favorites Hook
 import { useFavoritesStore } from '../store/favoritesStore';
 
 // --- FETCHER ---
@@ -22,7 +21,36 @@ const fetchSongDetails = async (id: string): Promise<Song> => {
     return response.data.data;
 };
 
-// --- SETTINGS HOOK (Simplified to just Font Size) ---
+// ==========================================
+// REUSABLE SKELETON COMPONENT
+// ==========================================
+const Skeleton = ({ style }: { style: any }) => {
+    const opacity = useRef(new Animated.Value(0.3)).current;
+    const colors = useThemeColors();
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+            ])
+        ).start();
+    }, [opacity]);
+
+    return (
+        <Animated.View
+            style={[
+                style,
+                {
+                    backgroundColor: colors.isDark ? '#333333' : '#E0E0E0',
+                    opacity,
+                },
+            ]}
+        />
+    );
+};
+
+// --- SETTINGS HOOK ---
 const useReaderSettings = () => {
     const [fontSize, setFontSize] = useState(18);
     const [loading, setLoading] = useState(true);
@@ -57,11 +85,13 @@ export default function SongDetailScreen() {
     const { fontSize, updateFontSize, loading: settingsLoading } = useReaderSettings();
     const [showSettings, setShowSettings] = useState(false);
 
-    // Data Fetch
+    // Data Fetch (Updated with specific Offline Support settings)
     const { data: song, isLoading, isError } = useQuery({
         queryKey: ['song', id],
         queryFn: () => fetchSongDetails(id),
-        staleTime: 1000 * 60 * 5,
+        // offline support tweaks:
+        staleTime: 1000 * 60 * 60 * 24, // Treat data as fresh for 24 hours (loads instantly)
+        gcTime: 1000 * 60 * 60 * 24 * 7, // Keep lyrics saved in local storage for 7 days!
     });
 
     const hasAudio = song?.audioUrl && song.audioUrl.trim().length > 0;
@@ -77,20 +107,76 @@ export default function SongDetailScreen() {
         if (albumId) navigation.navigate('AlbumDetail', { id: albumId });
     };
 
+    // ==========================================
+    // 1. SKELETON LOADING STATE
+    // ==========================================
     if (isLoading || settingsLoading) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.bg }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
+            <View style={[styles.container, { backgroundColor: colors.bg }]}>
+                <StatusBar barStyle={colors.isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
+
+                {/* Fake Header */}
+                <View style={[styles.header, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+                        <Ionicons name="chevron-back" size={24} color={colors.text} />
+                    </TouchableOpacity>
+
+                    <View style={styles.headerTitleContainer}>
+                        <Skeleton style={{ width: 120, height: 16, borderRadius: 4, marginBottom: 4 }} />
+                        <Skeleton style={{ width: 80, height: 12, borderRadius: 4 }} />
+                    </View>
+
+                    <View style={styles.headerActions}>
+                        <Skeleton style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8 }} />
+                        <Skeleton style={{ width: 32, height: 32, borderRadius: 16 }} />
+                    </View>
+                </View>
+
+                {/* Lyrics Body Skeletons */}
+                <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 20 }}>
+                    <View style={styles.contentHeader}>
+                        <Skeleton style={{ width: 200, height: 28, borderRadius: 6, marginBottom: 16 }} />
+                        <View style={styles.metaLinksRow}>
+                            <Skeleton style={{ width: 80, height: 24, borderRadius: 12 }} />
+                            <Skeleton style={{ width: 100, height: 24, borderRadius: 12 }} />
+                        </View>
+                    </View>
+
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                    {/* Simulating Lyrics Lines */}
+                    <View style={{ paddingHorizontal: SPACING.xl, marginTop: 10 }}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((line, index) => (
+                            <Skeleton
+                                key={line}
+                                style={{
+                                    width: index % 3 === 0 ? '70%' : index % 2 === 0 ? '90%' : '85%',
+                                    height: fontSize - 2,
+                                    borderRadius: 4,
+                                    marginBottom: fontSize * 0.8
+                                }}
+                            />
+                        ))}
+                    </View>
+                </ScrollView>
             </View>
         );
     }
 
+    // ==========================================
+    // 2. ERROR STATE
+    // ==========================================
     if (isError || !song) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.bg }]}>
-                <Text style={{ color: colors.textSecondary }}>Song not found.</Text>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text style={{ color: colors.primary, marginTop: 10, fontFamily: FONTS.bold }}>Go Back</Text>
+            <View style={[styles.center, { backgroundColor: colors.bg, paddingHorizontal: 20 }]}>
+                <Ionicons name="document-text-outline" size={60} color={colors.textSecondary} style={{ marginBottom: 16 }} />
+                <Text style={{ color: colors.text, fontFamily: FONTS.bold, fontSize: 18 }}>Lyrics not found</Text>
+                <Text style={{ color: colors.textSecondary, fontFamily: FONTS.regular, marginTop: 8, textAlign: 'center' }}>
+                    We couldn't load this song. Please check your internet connection.
+                </Text>
+
+                <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.goBackBtn, { backgroundColor: colors.primary }]}>
+                    <Text style={{ color: '#fff', fontFamily: FONTS.bold }}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -99,6 +185,9 @@ export default function SongDetailScreen() {
     const artistName = typeof song.artistId === 'object' ? song.artistId.name : "Unknown Artist";
     const albumTitle = typeof song.albumId === 'object' ? song.albumId.title : "Single";
 
+    // ==========================================
+    // 3. MAIN CONTENT
+    // ==========================================
     return (
         <View style={[styles.container, { backgroundColor: colors.bg }]}>
             <StatusBar barStyle={colors.isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
@@ -267,5 +356,6 @@ const styles = StyleSheet.create({
         position: 'absolute', right: 20, bottom: 40, height: 60, width: 60,
         alignItems: 'center', justifyContent: 'center', borderRadius: 30, zIndex: 30,
         shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6
-    }
+    },
+    goBackBtn: { marginTop: 24, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 25 }
 });

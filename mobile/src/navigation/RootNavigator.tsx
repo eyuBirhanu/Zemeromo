@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSettingsStore } from '../store/settingsStore';
-import { useThemeColors } from '../hooks/useThemeColors'; // Theme Hook
+import { useThemeColors } from '../hooks/useThemeColors';
 
 // Screens
 import TabNavigator from './TabNavigator';
@@ -18,20 +18,19 @@ const Stack = createNativeStackNavigator();
 export default function RootNavigator() {
     const hasSeenOnboarding = useSettingsStore((state) => state.hasSeenOnboarding);
     const [isReady, setIsReady] = useState(false);
-    const colors = useThemeColors(); // Get Theme Colors
+    const colors = useThemeColors();
 
-    // Wait for hydration (Zustand persist)
     useEffect(() => {
-        const timer = setTimeout(() => setIsReady(true), 50);
+        const timer = setTimeout(() => {
+            setIsReady(true);
+        }, 50);
+
         return () => clearTimeout(timer);
     }, []);
 
     if (!isReady) {
-        // Theme-aware loading screen
         return (
-            <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={colors.accent} />
-            </View>
+            <View style={{ flex: 1, backgroundColor: colors.bg }} />
         );
     }
 
@@ -41,7 +40,9 @@ export default function RootNavigator() {
             initialRouteName={hasSeenOnboarding ? "MainTabs" : "Onboarding"}
         >
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+
             <Stack.Screen name="MainTabs" component={TabNavigator} />
+
             <Stack.Screen name="ArtistDetail" component={ArtistDetailScreen} />
             <Stack.Screen name="AlbumDetail" component={AlbumDetailScreen} />
             <Stack.Screen name="ChurchDetail" component={ChurchDetailScreen} />

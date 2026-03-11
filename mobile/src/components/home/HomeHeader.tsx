@@ -1,29 +1,64 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SPACING, FONTS } from '../../constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
-export default function HomeHeader() {
+interface Props {
+    isLoading?: boolean;
+}
+
+// --- SKELETON ---
+const Skeleton = ({ style }: { style: any }) => {
+    const opacity = useRef(new Animated.Value(0.3)).current;
+    const colors = useThemeColors();
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+            ])
+        ).start();
+    }, [opacity]);
+    return <Animated.View style={[style, { backgroundColor: colors.isDark ? '#333333' : '#E0E0E0', opacity }]} />;
+};
+
+export default function HomeHeader({ isLoading }: Props) {
     const navigation = useNavigation<any>();
     const colors = useThemeColors();
 
+    // Time-based greeting logic
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good morning';
+        if (hour < 18) return 'Good afternoon';
+        return 'Good evening';
+    };
+
+    if (isLoading) {
+        return (
+            <View style={[styles.container, { backgroundColor: colors.bg }]}>
+                <View>
+                    <Skeleton style={{ width: 100, height: 14, borderRadius: 4, marginBottom: 6 }} />
+                    <Skeleton style={{ width: 180, height: 24, borderRadius: 6 }} />
+                </View>
+                <View style={styles.actions}>
+                    <Skeleton style={{ width: 40, height: 40, borderRadius: 20 }} />
+                    <Skeleton style={{ width: 40, height: 40, borderRadius: 20 }} />
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View style={[styles.container, { backgroundColor: colors.bg }]}>
-            {/* Left: Greeting & Logo */}
+            {/* Left: Greeting & Welcome */}
             <View>
-                <Text style={[styles.greeting, { color: colors.textSecondary }]}>Selam, Wegene 👋</Text>
-                <View style={styles.logoRow}>
-                    <Text style={[styles.brandText, { color: colors.text }]}>
-                        Zeme
-                        {/* FIX: Use Primary (Emerald) in light mode for readability, Accent (Lime) in dark */}
-                        <Text style={{ color: colors.isDark ? colors.accent : colors.primary }}>
-                            romo
-                        </Text>
-                    </Text>
-                    <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-                </View>
+                <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()},</Text>
+                <Text style={[styles.welcomeText, { color: colors.text }]}>
+                    Welcome to <Text style={[styles.brandText, { color: colors.isDark ? colors.accent : colors.primary }]}>Zemeromo</Text>
+                </Text>
             </View>
 
             {/* Right: Actions */}
@@ -36,11 +71,10 @@ export default function HomeHeader() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.profileBtn, { borderColor: colors.isDark ? colors.primary : colors.primary }]}
+                    style={[styles.profileBtn, { borderColor: colors.primary }]}
                     onPress={() => navigation.navigate('Profile')}
                 >
-                    {/* Placeholder Avatar */}
-                    <View style={[styles.avatar, { backgroundColor: colors.isDark ? colors.primary : colors.primary }]}>
+                    <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                         <Ionicons name="person" size={16} color={colors.isDark ? colors.black : colors.white} />
                     </View>
                 </TouchableOpacity>
@@ -55,52 +89,24 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: SPACING.m,
-        paddingTop: SPACING.xl, // Safe area top
+        paddingTop: SPACING.xl,
         paddingBottom: SPACING.m,
     },
     greeting: {
         fontFamily: FONTS.medium,
-        fontSize: 12,
+        fontSize: 13,
         marginBottom: 2,
     },
-    logoRow: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
+    welcomeText: {
+        fontFamily: FONTS.bold,
+        fontSize: 18,
+        letterSpacing: -0.5,
     },
     brandText: {
         fontFamily: 'serif',
-        fontSize: 24,
-        letterSpacing: -0.5,
     },
-    dot: {
-        width: 5,
-        height: 5,
-        borderRadius: 5,
-        marginLeft: 4,
-    },
-    actions: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    iconBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    profileBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        padding: 2,
-        borderWidth: 1.5,
-    },
-    avatar: {
-        flex: 1,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    }
+    actions: { flexDirection: 'row', gap: 12 },
+    iconBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+    profileBtn: { width: 40, height: 40, borderRadius: 20, padding: 2, borderWidth: 1.5 },
+    avatar: { flex: 1, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }
 });

@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, Image, TouchableOpacity, StyleSheet, ScrollView,
-    StatusBar, ActivityIndicator, LayoutAnimation, Platform, UIManager, Share
+    StatusBar, LayoutAnimation, Platform, UIManager, Share, Animated
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
 
 import api from '../lib/api';
 import { SPACING, FONTS } from '../constants/theme';
-import { useThemeColors } from '../hooks/useThemeColors'; // Theme Hook
-import { useFavorites } from '../hooks/useFavorites'; // Local Storage Favorites Hook
+import { useThemeColors } from '../hooks/useThemeColors';
 import SongRow from '../components/shared/SongRow';
 import { Artist, Album, Song } from '../types/api';
 import { usePlayerStore } from '../store/playerStore';
@@ -21,11 +20,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Types...
 interface AlbumWithSongs extends Album { songs: Song[]; }
 interface ArtistDetailData extends Artist { albums: AlbumWithSongs[]; }
 
 const fetchArtistDetails = async (artistId: string): Promise<ArtistDetailData> => {
+    await new Promise(resolve => setTimeout(resolve, 3000));
     const [artistRes, albumsRes, songsRes] = await Promise.all([
         api.get(`/artists/${artistId}`),
         api.get(`/albums?artistId=${artistId}`),
@@ -45,6 +44,35 @@ const fetchArtistDetails = async (artistId: string): Promise<ArtistDetailData> =
     }));
 
     return { ...artist, albums: mergedAlbums };
+};
+
+// ==========================================
+// REUSABLE SKELETON COMPONENT
+// ==========================================
+const Skeleton = ({ style }: { style: any }) => {
+    const opacity = useRef(new Animated.Value(0.3)).current;
+    const colors = useThemeColors();
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+            ])
+        ).start();
+    }, [opacity]);
+
+    return (
+        <Animated.View
+            style={[
+                style,
+                {
+                    backgroundColor: colors.isDark ? '#333333' : '#E0E0E0',
+                    opacity,
+                },
+            ]}
+        />
+    );
 };
 
 export default function ArtistDetailScreen() {
@@ -96,26 +124,103 @@ export default function ArtistDetailScreen() {
         }
     };
 
+    // ==========================================
+    // 1. SKELETON LOADING STATE
+    // ==========================================
     if (isLoading) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.bg }]}>
-                <StatusBar barStyle={colors.isDark ? "light-content" : "dark-content"} />
-                <ActivityIndicator size="large" color={colors.primary} />
+            <View style={[styles.container, { backgroundColor: colors.bg }]}>
+                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+                <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+                    {/* Header Skeleton */}
+                    <View style={styles.headerContainer}>
+                        <Skeleton style={StyleSheet.absoluteFillObject} />
+
+                        <View style={styles.navBar}>
+                            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+                                <Ionicons name="chevron-back" size={24} color="white" />
+                            </TouchableOpacity>
+                            <View style={styles.iconBtn}>
+                                <Ionicons name="ellipsis-horizontal" size={24} color="white" />
+                            </View>
+                        </View>
+
+                        <View style={styles.headerContent}>
+                            <Skeleton style={{ width: 220, height: 36, borderRadius: 8, marginBottom: 8 }} />
+                            <Skeleton style={{ width: 140, height: 28, borderRadius: 100, marginBottom: 16 }} />
+
+                            <View style={styles.actionBar}>
+                                <Skeleton style={{ width: 34, height: 34, borderRadius: 17 }} />
+                                <Skeleton style={{ width: 34, height: 34, borderRadius: 17 }} />
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Stats Skeleton */}
+                    <View style={[styles.statsContainer, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
+                        {[1, 2, 3].map((item, index) => (
+                            <React.Fragment key={item}>
+                                <View style={styles.statItem}>
+                                    <Skeleton style={{ width: 40, height: 24, borderRadius: 4, marginBottom: 6 }} />
+                                    <Skeleton style={{ width: 60, height: 12, borderRadius: 4 }} />
+                                </View>
+                                {index < 2 && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
+                            </React.Fragment>
+                        ))}
+                    </View>
+
+                    {/* Bio Skeleton */}
+                    <View style={styles.section}>
+                        <Skeleton style={{ width: 80, height: 24, borderRadius: 4, marginBottom: SPACING.m }} />
+                        <Skeleton style={{ width: '100%', height: 14, borderRadius: 4, marginBottom: 8 }} />
+                        <Skeleton style={{ width: '90%', height: 14, borderRadius: 4, marginBottom: 8 }} />
+                        <Skeleton style={{ width: '95%', height: 14, borderRadius: 4, marginBottom: 8 }} />
+                        <Skeleton style={{ width: '60%', height: 14, borderRadius: 4 }} />
+                    </View>
+
+                    {/* Discography Skeletons */}
+                    <View style={styles.section}>
+                        <Skeleton style={{ width: 120, height: 24, borderRadius: 4, marginBottom: SPACING.m }} />
+
+                        {[1, 2, 3].map((key) => (
+                            <View key={key} style={[styles.albumCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                <View style={styles.albumHeader}>
+                                    <Skeleton style={styles.albumCover} />
+                                    <View style={styles.albumInfo}>
+                                        <Skeleton style={{ width: '70%', height: 16, borderRadius: 4, marginBottom: 6 }} />
+                                        <Skeleton style={{ width: '40%', height: 12, borderRadius: 4 }} />
+                                    </View>
+                                    <Skeleton style={styles.chevronBox} />
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                </ScrollView>
             </View>
         );
     }
 
+    // ==========================================
+    // 2. ERROR STATE
+    // ==========================================
     if (isError || !artist) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.bg }]}>
-                <Text style={{ color: colors.textSecondary }}>Artist not found</Text>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
-                    <Text style={{ color: colors.primary, fontFamily: FONTS.bold }}>Go Back</Text>
+            <View style={[styles.center, { backgroundColor: colors.bg, paddingHorizontal: 20 }]}>
+                <Ionicons name="alert-circle-outline" size={60} color={colors.textSecondary} style={{ marginBottom: 16 }} />
+                <Text style={{ color: colors.text, fontFamily: FONTS.bold, fontSize: 18 }}>Artist not found</Text>
+                <Text style={{ color: colors.textSecondary, fontFamily: FONTS.regular, marginTop: 8 }}>We couldn't load their details.</Text>
+
+                <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.goBackBtn, { backgroundColor: colors.primary }]}>
+                    <Text style={{ color: '#fff', fontFamily: FONTS.bold }}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
+    // ==========================================
+    // 3. MAIN CONTENT
+    // ==========================================
     return (
         <View style={[styles.container, { backgroundColor: colors.bg }]}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -131,41 +236,24 @@ export default function ArtistDetailScreen() {
                             onError={() => setImageError(true)}
                         />
                     ) : (
-                        // Fallback Gradient if image fails
-                        <LinearGradient
-                            colors={[colors.primary, '#000']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.headerImage}
-                        />
+                        <LinearGradient colors={[colors.primary, '#000']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerImage} />
                     )}
 
-                    {/* Top gradient so the white back button is always visible */}
-                    <LinearGradient
-                        colors={['rgba(0,0,0,0.5)', 'transparent']}
-                        style={styles.topGradient}
-                    />
-
-                    {/* Bottom gradient blending smoothly into the background theme */}
-                    <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.3)', colors.bg]}
-                        locations={[0, 0.6, 1]}
-                        style={styles.gradient}
-                    />
+                    <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent']} style={styles.topGradient} />
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.3)', colors.bg]} locations={[0, 0.6, 1]} style={styles.gradient} />
 
                     <View style={styles.navBar}>
                         <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
                             <Ionicons name="chevron-back" size={24} color="white" />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
+                        {/* <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
                             <Ionicons name="ellipsis-horizontal" size={24} color="white" />
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                     </View>
 
                     <View style={styles.headerContent}>
                         <Text style={[styles.name, { color: "#fff" }]}>{artist.name}</Text>
 
-                        {/* Clickable Church Badge */}
                         <TouchableOpacity
                             onPress={goToChurch}
                             activeOpacity={0.8}
@@ -178,14 +266,9 @@ export default function ArtistDetailScreen() {
                             <Ionicons name="chevron-forward" size={12} color={colors.textSecondary} style={{ marginLeft: 4 }} />
                         </TouchableOpacity>
 
-                        {/* Action Bar (Favorites & Share) */}
                         <View style={styles.actionBar}>
                             <TouchableOpacity onPress={() => toggleFavorite(artist, 'Artist')} style={styles.actionBtn}>
-                                <Ionicons
-                                    name={isFavorite ? "heart" : "heart-outline"}
-                                    size={28}
-                                    color={isFavorite ? colors.primary : colors.text}
-                                />
+                                <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={28} color={isFavorite ? colors.primary : colors.text} />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleShare} style={styles.actionBtn}>
                                 <Ionicons name="share-social-outline" size={26} color={colors.text} />
@@ -266,7 +349,7 @@ export default function ArtistDetailScreen() {
                                                         artist={song.artistId?.name || artist.name}
                                                         coverImage={song.thumbnailUrl || album.coverImageUrl}
                                                         duration={song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : undefined}
-                                                        audioUrl={song.audioUrl} // Enables Play Button Logic
+                                                        audioUrl={song.audioUrl}
                                                         isPlaying={isPlaying && currentSong?._id === song._id}
                                                         onPress={() => navigation.navigate('SongDetail', { id: song._id, song })}
                                                         onPlayPress={() => handlePlayPause(song, album.songs, idx)}
@@ -280,7 +363,6 @@ export default function ArtistDetailScreen() {
                         })
                     )}
                 </View>
-
             </ScrollView>
         </View>
     );
@@ -303,10 +385,6 @@ const styles = StyleSheet.create({
 
     actionBar: { flexDirection: 'row', alignItems: 'center', gap: 24, marginTop: 4 },
     actionBtn: { padding: 4 },
-
-    tagRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
-    tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
-    tagText: { fontSize: 12, fontFamily: FONTS.medium },
 
     statsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: SPACING.l, borderBottomWidth: 1, borderTopWidth: 1, marginBottom: SPACING.l, marginHorizontal: SPACING.m },
     statItem: { alignItems: 'center', width: '30%' },
@@ -332,5 +410,6 @@ const styles = StyleSheet.create({
     albumTitle: { fontSize: 16, fontFamily: FONTS.bold, marginBottom: 2 },
     albumMeta: { fontSize: 12, fontFamily: FONTS.regular },
     chevronBox: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-    songsList: { borderTopWidth: 1 }
+    songsList: { borderTopWidth: 1 },
+    goBackBtn: { marginTop: 24, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 25 }
 });

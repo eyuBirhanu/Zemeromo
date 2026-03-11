@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, Image, TouchableOpacity, StyleSheet, ScrollView,
-    StatusBar, Linking, FlatList, ActivityIndicator, Platform, Share
+    StatusBar, Linking, FlatList, Platform, Share, Animated
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import { SPACING, FONTS } from '../constants/theme';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { useFavorites } from '../hooks/useFavorites'; // NEW
 import ArtistCard from '../components/home/ArtistCard';
 import { IChurch, Artist } from '../types/api';
 import { useFavoritesStore } from '../store/favoritesStore';
@@ -30,6 +29,35 @@ const fetchChurchDetails = async (churchId: string): Promise<ChurchDetailData> =
         ...churchRes.data.data,
         teams: teamsRes.data.data || []
     };
+};
+
+// ==========================================
+// REUSABLE SKELETON COMPONENT
+// ==========================================
+const Skeleton = ({ style }: { style: any }) => {
+    const opacity = useRef(new Animated.Value(0.3)).current;
+    const colors = useThemeColors();
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+            ])
+        ).start();
+    }, [opacity]);
+
+    return (
+        <Animated.View
+            style={[
+                style,
+                {
+                    backgroundColor: colors.isDark ? '#333333' : '#E0E0E0',
+                    opacity,
+                },
+            ]}
+        />
+    );
 };
 
 export default function ChurchDetailScreen() {
@@ -76,21 +104,104 @@ export default function ChurchDetailScreen() {
         } catch (error) { console.log(error); }
     };
 
+    // ==========================================
+    // 1. SKELETON LOADING STATE
+    // ==========================================
     if (isLoading) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.bg }]}>
-                <StatusBar barStyle={colors.isDark ? "light-content" : "dark-content"} />
-                <ActivityIndicator size="large" color={colors.primary} />
+            <View style={[styles.container, { backgroundColor: colors.bg }]}>
+                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+                <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+                    {/* Header Image Skeleton */}
+                    <View style={styles.headerContainer}>
+                        <Skeleton style={styles.headerImage} />
+
+                        {/* Fake Navbar */}
+                        <View style={styles.navBar}>
+                            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+                                <Ionicons name="chevron-back" size={24} color="white" />
+                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <View style={styles.iconBtn}>
+                                    <Ionicons name="heart-outline" size={22} color="white" />
+                                </View>
+                                <View style={styles.iconBtn}>
+                                    <Ionicons name="share-social-outline" size={22} color="white" />
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Profile Info Skeleton */}
+                    <View style={styles.profileContainer}>
+                        <View style={styles.logoWrapper}>
+                            <Skeleton style={[styles.logo, { borderColor: colors.bg, backgroundColor: colors.bg }]} />
+                        </View>
+
+                        <Skeleton style={{ width: 200, height: 32, borderRadius: 8, marginBottom: 8 }} />
+                        <Skeleton style={{ width: 150, height: 24, borderRadius: 12, marginBottom: 24 }} />
+
+                        {/* Action Buttons Skeleton */}
+                        <View style={styles.actionRow}>
+                            <Skeleton style={styles.primaryBtn} />
+                            <Skeleton style={styles.secondaryBtn} />
+                        </View>
+                    </View>
+
+                    {/* Stats Skeleton */}
+                    <View style={[styles.statsContainer, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
+                        {[1, 2, 3].map((item, index) => (
+                            <React.Fragment key={item}>
+                                <View style={styles.statItem}>
+                                    <Skeleton style={{ width: 40, height: 24, borderRadius: 4, marginBottom: 6 }} />
+                                    <Skeleton style={{ width: 60, height: 12, borderRadius: 4 }} />
+                                </View>
+                                {index < 2 && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
+                            </React.Fragment>
+                        ))}
+                    </View>
+
+                    {/* About Skeleton */}
+                    <View style={styles.section}>
+                        <Skeleton style={{ width: 80, height: 24, borderRadius: 4, marginBottom: SPACING.m }} />
+                        <Skeleton style={{ width: '100%', height: 14, borderRadius: 4, marginBottom: 8 }} />
+                        <Skeleton style={{ width: '90%', height: 14, borderRadius: 4, marginBottom: 8 }} />
+                        <Skeleton style={{ width: '95%', height: 14, borderRadius: 4, marginBottom: 8 }} />
+                        <Skeleton style={{ width: '60%', height: 14, borderRadius: 4 }} />
+                    </View>
+
+                    {/* Worship Teams Horizontal Skeleton */}
+                    <View style={styles.section}>
+                        <Skeleton style={{ width: 140, height: 24, borderRadius: 4, marginBottom: SPACING.m }} />
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            {[1, 2, 3].map((key) => (
+                                <View key={key} style={{ marginRight: SPACING.m }}>
+                                    {/* Using approx dimensions of an ArtistCard */}
+                                    <Skeleton style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 8 }} />
+                                    <Skeleton style={{ width: 100, height: 14, borderRadius: 4, alignSelf: 'center', marginBottom: 4 }} />
+                                    <Skeleton style={{ width: 60, height: 12, borderRadius: 4, alignSelf: 'center' }} />
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </ScrollView>
             </View>
         );
     }
 
+    // ==========================================
+    // 2. ERROR STATE
+    // ==========================================
     if (isError || !church) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.bg }]}>
-                <Text style={{ color: colors.textSecondary }}>Church not found.</Text>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
-                    <Text style={{ color: colors.primary, fontFamily: FONTS.bold }}>Go Back</Text>
+            <View style={[styles.center, { backgroundColor: colors.bg, paddingHorizontal: 20 }]}>
+                <Ionicons name="alert-circle-outline" size={60} color={colors.textSecondary} style={{ marginBottom: 16 }} />
+                <Text style={{ color: colors.text, fontFamily: FONTS.bold, fontSize: 18 }}>Church not found</Text>
+                <Text style={{ color: colors.textSecondary, fontFamily: FONTS.regular, marginTop: 8 }}>We couldn't load the details.</Text>
+
+                <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.goBackBtn, { backgroundColor: colors.primary }]}>
+                    <Text style={{ color: '#fff', fontFamily: FONTS.bold }}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -101,6 +212,9 @@ export default function ChurchDetailScreen() {
     const hasValidCover = coverImageUrl && !coverError;
     const hasValidLogo = church.logoUrl && !logoError;
 
+    // ==========================================
+    // 3. MAIN CONTENT
+    // ==========================================
     return (
         <View style={[styles.container, { backgroundColor: colors.bg }]}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -124,16 +238,8 @@ export default function ChurchDetailScreen() {
                         />
                     )}
 
-                    {/* Gradients for Text & Icon Visibility */}
-                    <LinearGradient
-                        colors={['rgba(0,0,0,0.5)', 'transparent']}
-                        style={styles.topGradient}
-                    />
-                    <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.4)', colors.bg]}
-                        locations={[0, 0.6, 1]}
-                        style={styles.gradient}
-                    />
+                    <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent']} style={styles.topGradient} />
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.4)', colors.bg]} locations={[0, 0.6, 1]} style={styles.gradient} />
 
                     {/* Top Nav Actions */}
                     <View style={styles.navBar}>
@@ -322,8 +428,9 @@ const styles = StyleSheet.create({
     sectionTitle: { fontSize: 18, fontFamily: FONTS.bold, marginBottom: 16 },
     description: { lineHeight: 22, fontSize: 14, fontFamily: FONTS.regular },
 
-    // Empty
+    // Empty & Misc
     emptyContainer: { alignItems: 'center', padding: 20, gap: 10, borderWidth: 1, borderColor: 'rgba(156, 163, 175, 0.2)', borderRadius: 16, borderStyle: 'dashed' },
     emptyTitle: { fontSize: 16, fontFamily: FONTS.bold },
     emptySub: { fontSize: 13, textAlign: 'center', fontFamily: FONTS.regular },
+    goBackBtn: { marginTop: 24, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 25 }
 });

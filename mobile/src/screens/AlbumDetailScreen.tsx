@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, Image, TouchableOpacity, StyleSheet,
-    StatusBar, FlatList, ActivityIndicator, Share, Linking
+    StatusBar, FlatList, Animated, Share
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,16 +11,46 @@ import api from '../lib/api';
 
 import { SPACING, FONTS } from '../constants/theme';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { useFavorites } from '../hooks/useFavorites'; // Use the new hook
 import SongRow from '../components/shared/SongRow';
 import { Song } from '../types/api';
 import { usePlayerStore } from '../store/playerStore';
 import { useFavoritesStore } from '../store/favoritesStore';
 
 const fetchAlbumDetails = async (id: string) => {
+
     const albumRes = await api.get(`/albums/${id}`);
     const songsRes = await api.get(`/songs?albumId=${id}`);
     return { ...albumRes.data.data, songs: songsRes.data.data };
+};
+
+// ==========================================
+// REUSABLE SKELETON COMPONENT
+// (You can extract this to src/components/shared/Skeleton.tsx later)
+// ==========================================
+const Skeleton = ({ style }: { style: any }) => {
+    const opacity = useRef(new Animated.Value(0.3)).current;
+    const colors = useThemeColors();
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+            ])
+        ).start();
+    }, [opacity]);
+
+    return (
+        <Animated.View
+            style={[
+                style,
+                {
+                    backgroundColor: colors.isDark ? '#333333' : '#E0E0E0',
+                    opacity,
+                },
+            ]}
+        />
+    );
 };
 
 export default function AlbumDetailScreen() {
@@ -53,8 +83,8 @@ export default function AlbumDetailScreen() {
     const handleShare = async () => {
         try {
             await Share.share({
-                message: `Check out the album "${album.title}" by ${album.artistId?.name} on Zemeromo! \n\nhttps://zemeromo.com/album/${id}`,
-                title: `Share ${album.title}`
+                message: `Check out the album "${album?.title}" by ${album?.artistId?.name} on Zemeromo! \n\nhttps://zemeromo.com/album/${id}`,
+                title: `Share ${album?.title}`
             });
         } catch (error) { console.log(error); }
     };
@@ -65,21 +95,80 @@ export default function AlbumDetailScreen() {
         }
     };
 
+    // ==========================================
+    // 1. SKELETON LOADING STATE
+    // ==========================================
     if (isLoading) {
         return (
-            <View style={[styles.center, { backgroundColor: colors.bg }]}>
-                <StatusBar barStyle={colors.isDark ? "light-content" : "dark-content"} />
-                <ActivityIndicator size="large" color={colors.primary} />
+            <View style={[styles.container, { backgroundColor: colors.bg }]}>
+                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+                <View>
+                    {/* Header Skeleton */}
+                    <View style={styles.artWrapper}>
+                        <Skeleton style={styles.coverImage} />
+
+                        {/* Fake Navbar to keep Back/Share buttons working while loading */}
+                        <View style={styles.navBar}>
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+                                <Ionicons name="chevron-back" size={24} color="white" />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.iconBtn}>
+                                <Ionicons name="share-social-outline" size={24} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Info Skeleton */}
+                    <View style={styles.infoContainer}>
+                        <Skeleton style={{ width: '60%', height: 32, marginBottom: 8, borderRadius: 6 }} />
+
+                        <View style={styles.artistRow}>
+                            <Skeleton style={styles.artistAvatar} />
+                            <Skeleton style={{ width: '35%', height: 16, borderRadius: 4 }} />
+                        </View>
+
+                        <Skeleton style={{ width: '45%', height: 14, marginBottom: 20, borderRadius: 4 }} />
+
+                        <View style={styles.actionBar}>
+                            <View style={styles.leftActions}>
+                                <Skeleton style={{ width: 28, height: 28, borderRadius: 14 }} />
+                            </View>
+                            {/* Play Button Skeleton */}
+                            <Skeleton style={styles.playButton} />
+                        </View>
+                    </View>
+                </View>
+
+                {/* Song List Skeletons */}
+                <View style={{ flex: 1, paddingHorizontal: SPACING.m, marginTop: 10 }}>
+                    {[1, 2, 3, 4, 5].map((key) => (
+                        <View key={key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                            <Skeleton style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }} />
+                            <View style={{ flex: 1, justifyContent: 'center' }}>
+                                <Skeleton style={{ width: '70%', height: 16, marginBottom: 8, borderRadius: 4 }} />
+                                <Skeleton style={{ width: '40%', height: 12, borderRadius: 4 }} />
+                            </View>
+                            <Skeleton style={{ width: 24, height: 24, borderRadius: 12, marginLeft: 16 }} />
+                        </View>
+                    ))}
+                </View>
             </View>
         );
     }
 
+    // ==========================================
+    // 2. ERROR STATE
+    // ==========================================
     if (isError || !album) {
         return (
             <View style={[styles.center, { backgroundColor: colors.bg }]}>
-                <Text style={{ color: colors.textSecondary }}>Album not found</Text>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
-                    <Text style={{ color: colors.primary, fontFamily: FONTS.bold }}>Go Back</Text>
+                <Ionicons name="alert-circle-outline" size={60} color={colors.textSecondary} style={{ marginBottom: 16 }} />
+                <Text style={{ color: colors.text, fontFamily: FONTS.bold, fontSize: 18 }}>Album not found</Text>
+                <Text style={{ color: colors.textSecondary, fontFamily: FONTS.regular, marginTop: 8 }}>We couldn't load the details.</Text>
+
+                <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.goBackBtn, { backgroundColor: colors.primary }]}>
+                    <Text style={{ color: '#fff', fontFamily: FONTS.bold }}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -87,6 +176,9 @@ export default function AlbumDetailScreen() {
 
     const hasSongs = album.songs && album.songs.length > 0;
 
+    // ==========================================
+    // 3. MAIN HEADER COMPONENT
+    // ==========================================
     const renderHeader = () => (
         <View>
             {/* --- ARTWORK --- */}
@@ -153,19 +245,18 @@ export default function AlbumDetailScreen() {
                 <View style={styles.actionBar}>
                     <View style={styles.leftActions}>
                         <TouchableOpacity onPress={() => toggleFavorite(album, 'Album')}>
-                            <Ionicons name={isFavorite ? "heart" : "heart-outline"} color={isFavorite ? colors.primary : colors.text} />
+                            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={28} color={isFavorite ? colors.primary : colors.text} />
                         </TouchableOpacity>
-                        {/* Removed duplicate share button */}
                     </View>
 
                     {/* PLAY ALL FAB - Only show if songs exist */}
                     {hasSongs && (
                         <TouchableOpacity
-                            style={[styles.playButton, { backgroundColor: colors.accent }]}
+                            style={[styles.playButton, { backgroundColor: colors.primary }]}
                             activeOpacity={0.9}
                             onPress={() => playSongList(album.songs, 0)}
                         >
-                            <Ionicons name="play" size={32} color="black" style={{ marginLeft: 4 }} />
+                            <Ionicons name="play" size={32} color="white" style={{ marginLeft: 4 }} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -173,6 +264,9 @@ export default function AlbumDetailScreen() {
         </View>
     );
 
+    // ==========================================
+    // 4. EMPTY STATE
+    // ==========================================
     const renderEmpty = () => (
         <View style={styles.emptyContainer}>
             <Ionicons name="musical-notes-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
@@ -183,6 +277,9 @@ export default function AlbumDetailScreen() {
         </View>
     );
 
+    // ==========================================
+    // 5. MAIN RENDER
+    // ==========================================
     return (
         <View style={[styles.container, { backgroundColor: colors.bg }]}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -200,7 +297,7 @@ export default function AlbumDetailScreen() {
                         artist={item.artistId?.name || album.artistId?.name}
                         coverImage={item.thumbnailUrl || album.coverImageUrl}
                         duration={item.duration ? `${Math.floor(item.duration / 60)}:${(item.duration % 60).toString().padStart(2, '0')}` : undefined}
-                        audioUrl={item.audioUrl} // Enables correct Play Button logic
+                        audioUrl={item.audioUrl}
                         isPlaying={isPlaying && currentSong?._id === item._id}
                         onPress={() => navigation.navigate('SongDetail', { id: item._id, song: item })}
                         onPlayPress={() => handlePlayPause(item, index)}
@@ -211,9 +308,12 @@ export default function AlbumDetailScreen() {
     );
 }
 
+// ==========================================
+// STYLES
+// ==========================================
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
     navBar: { position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: SPACING.m, zIndex: 10 },
     iconBtn: { width: 40, height: 40, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
     artWrapper: { width: '100%', height: 380 },
@@ -233,5 +333,6 @@ const styles = StyleSheet.create({
     playButton: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 8 },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingTop: 40, paddingHorizontal: 40 },
     emptyTitle: { fontSize: 18, fontFamily: FONTS.bold, marginTop: 16, marginBottom: 8 },
-    emptySub: { textAlign: 'center', fontSize: 14, fontFamily: FONTS.regular, lineHeight: 20 }
+    emptySub: { textAlign: 'center', fontSize: 14, fontFamily: FONTS.regular, lineHeight: 20 },
+    goBackBtn: { marginTop: 24, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 25 }
 });
