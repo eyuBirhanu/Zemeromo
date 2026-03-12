@@ -7,3 +7,6 @@ build/
 ./backend/node_modules
 .vscode/
 tree.js
+public/downloads/
+*.apk
+client/public/downloads/
