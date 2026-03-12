@@ -41,8 +41,9 @@ export default function CTA() {
 
                             {/* 1. Android APK Download Button (Lime) - Uses <a> tag with 'download' */}
                             <a
-                                href="/downloads/zemeromo-android-v1.apk"
-                                download="zemeromo-android-v1.apk"
+                                href="https://github.com/eyuBirhanu/Zemeromo/releases/download/v1.0.0/zemeromo-android-v1.apk"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="flex items-center gap-3 bg-accent hover:bg-[#c2e658] text-dark-bg px-6 py-3.5 rounded-xl shadow-glow min-w-[180px] transition-transform hover:-translate-y-1"
                             >
                                 <Download size={28} />

@@ -45,8 +45,9 @@ export default function Hero() {
 
                         {/* Primary CTA - Changed to an actual download link */}
                         <a
-                            href="/downloads/zemeromo-android-v1.apk"
-                            download="zemeromo-android-v1.apk"
+                            href="https://github.com/eyuBirhanu/Zemeromo/releases/download/v1.0.0/zemeromo-android-v1.apk"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="group relative px-8 py-4 bg-accent hover:bg-[#c2e658] text-dark-bg rounded-full font-bold text-lg transition-all transform shadow-[0_0_30px_-10px_rgba(212,244,121,0.2)]"
                         >
                             <span className="flex items-center gap-2">
