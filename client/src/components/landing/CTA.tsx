@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, Download, ShieldCheck } from "lucide-react";
 
 // --- CUSTOM ICONS (Official Shapes) ---
 
@@ -10,12 +10,11 @@ const GooglePlayIcon = () => (
 const AppleIcon = () => (
     <svg className="w-8 h-8" viewBox="0 0 32 32"><g><path d="M11.7 32c-2.6 0-4.4-2.3-5.7-4.3-3.3-5.1-4-11.5-1.6-15.2 1.6-2.5 4.2-4 6.7-4 1.3 0 2.4.4 3.3.7.7.3 1.4.5 2.1.5.6 0 1.1-.2 1.8-.5.9-.3 2-.7 3.5-.7 2.2 0 4.5 1.2 6.1 3.2.2.2.3.5.2.8s-.2.5-.5.7c-1.8 1-2.8 2.8-2.6 4.8.1 2.1 1.4 3.8 3.3 4.5.3.1.5.3.6.6s.1.5 0 .8c-.7 1.5-1 2.2-1.9 3.5-1.5 2.2-3.3 4.5-5.7 4.5-1.1 0-1.8-.3-2.4-.6s-1.2-.6-2.4-.6c-1.1 0-1.7.3-2.4.6-.6.4-1.3.7-2.4.7z" fill="currentColor" ></path><path d="M15.7 8.7h-.2c-.5 0-.9-.4-1-.8-.3-1.7.3-3.7 1.6-5.3 1.2-1.5 3.2-2.5 5-2.7.5 0 1 .3 1.1.9.3 1.8-.3 3.7-1.6 5.3-1.1 1.6-3.1 2.6-4.9 2.6z" fill="currentColor"></path></g></svg>
 );
-
 export default function CTA() {
     return (
         <section id="download" className="relative py-24 bg-dark-bg px-4">
 
-            {/* --- THE BIG CARD (Wider & Thinner) --- */}
+            {/* --- THE BIG CARD --- */}
             <div className="relative w-full max-w-5xl mx-auto bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-[2.5rem] py-12 px-6 md:px-12 overflow-hidden text-center group">
 
                 {/* Background Glows */}
@@ -27,7 +26,7 @@ export default function CTA() {
                     {/* LEFT: Text Content */}
                     <div className="text-center md:text-left max-w-2xl">
                         <h2 className="text-3xl md:text-5xl font-bold font-serif text-white mb-4">
-                            Ready to <span className="text-gradient">Worship?</span>
+                            Ready to <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-accent to-primary">Worship?</span>
                         </h2>
                         <p className="text-gray-400 text-lg">
                             Join thousands of choir members in Ethiopia using Zemeromo.
@@ -40,26 +39,33 @@ export default function CTA() {
                         {/* Buttons Row */}
                         <div className="flex flex-col sm:flex-row gap-4">
 
-                            {/* 1. Android Button (Lime) */}
-                            <button className="flex items-center gap-3 bg-accent hover:bg-[#c2e658] text-dark-bg px-6 py-3.5 rounded-xl shadow-glow min-w-[180px]">
-                                <GooglePlayIcon />
+                            {/* 1. Android APK Download Button (Lime) - Uses <a> tag with 'download' */}
+                            <a
+                                href="/downloads/zemeromo-android-v1.apk"
+                                download="zemeromo-android-v1.apk"
+                                className="flex items-center gap-3 bg-accent hover:bg-[#c2e658] text-dark-bg px-6 py-3.5 rounded-xl shadow-glow min-w-[180px] transition-transform hover:-translate-y-1"
+                            >
+                                <Download size={28} />
                                 <div className="text-left leading-none text-nowrap">
-                                    <div className="text-[9px] font-bold uppercase tracking-wider opacity-80 mb-1">Get it on</div>
-                                    <div className="text-base font-bold font-sans">Google Play</div>
+                                    <div className="text-[9px] font-bold uppercase tracking-wider opacity-80 mb-1">Direct Download</div>
+                                    <div className="text-base font-bold font-sans">Android APK</div>
                                 </div>
-                            </button>
+                            </a>
 
-                            {/* 2. iOS Button (Glass) */}
-                            <button className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-6 py-3.5 rounded-xl transition-all hover:border-white/20 min-w-[180px]">
-                                <AppleIcon />
-                                <div className="text-left leading-none text-nowrap">
-                                    <div className="text-[9px] font-bold uppercase tracking-wider opacity-60 mb-1 text-nowrap">Download on the</div>
-                                    <div className="text-base font-bold font-sans text-nowrap">App Store</div>
+                            {/* 2. Coming Soon Button (Glass & Disabled) */}
+                            <div className="flex items-center gap-3 bg-white/5 border border-white/10 text-white/40 px-6 py-3.5 rounded-xl cursor-not-allowed min-w-[180px]">
+                                <div className="flex items-center gap-1">
+                                    <AppleIcon />
+                                    <GooglePlayIcon />
                                 </div>
-                            </button>
+                                <div className="text-left leading-none text-nowrap">
+                                    <div className="text-[9px] font-bold uppercase tracking-wider opacity-60 mb-1">Coming Soon to</div>
+                                    <div className="text-base font-bold font-sans">App Stores</div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* The "Admin" Link (No more "Portal") */}
+                        {/* The "Admin" Link */}
                         <Link
                             href="/auth/login"
                             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-accent transition-colors duration-300"
@@ -70,7 +76,6 @@ export default function CTA() {
                         </Link>
 
                     </div>
-
                 </div>
             </div>
         </section>
